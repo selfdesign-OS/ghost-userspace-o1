@@ -362,8 +362,8 @@ O1Task* O1Rq::Dequeue() {
     if (eq_.empty()) {
       return nullptr;
     } else {
-      GHOST_DPRINT(1, stderr, "[Swap Queue called] aq_size: %d, eq_size: %d", SizeOfAq(), SizeOfEq());
-      Swap(aq_, eq_);
+      GHOST_DPRINT(1, stderr, "[Swap Queue called]");
+      Swap();
     }
   }
 
