@@ -2,6 +2,7 @@
     "files.associations": {
         "deque": "cpp",
         "memory": "cpp",
-        "mutex": "cpp"
+        "mutex": "cpp",
+        "xutility": "cpp"
     }
 }

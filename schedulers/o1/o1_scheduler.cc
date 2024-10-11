@@ -65,6 +65,13 @@ void O1Scheduler::EnclaveReady() {
       CHECK_EQ(errno, ESTALE);
     }
   }
+
+  // Enable tick msg delivery here instead of setting AgentConfig.tick_config_
+  // because the agent subscribing the default channel (mostly the
+  // channel/agent for the front CPU in the enclave) can get CpuTick messages
+  // for another CPU in the enclave while this function is trying to associate
+  // each agent to its corresponding channel.
+  enclave()->SetDeliverTicks(true);
 }
 
 // Implicitly thread-safe because it is only called from one agent associated
@@ -213,6 +220,39 @@ void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
 
 void O1Scheduler::TaskSwitchto(O1Task* task, const Message& msg) {
   TaskOffCpu(task, /*blocked=*/true, /*from_switchto=*/false);
+}
+
+void O1Scheduler::CpuTick(const Message& msg) {
+  const ghost_msg_payload_cpu_tick* payload =
+      static_cast<const ghost_msg_payload_cpu_tick*>(msg.payload());
+  Cpu cpu = topology()->cpu(payload->cpu);
+  CpuState* cs = cpu_state(cpu);
+  cs->run_queue.mu_.AssertHeld(); // lock 잡았는지 확인
+
+  // We do not actually need any logic in CpuTick for preemption. Since
+  // CpuTick messages wake up the agent, CfsSchedule will eventually be
+  // called, which contains the logic for figuring out if we should run the
+  // task that was running before we got preempted the agent or if we should
+  // reach into our rb tree.
+  CheckPreemptTick(cpu);
+}
+
+void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
+  ABSL_NO_THREAD_SAFETY_ANALYSIS {
+  CpuState* cs = cpu_state(cpu);
+  cs->run_queue.mu_.AssertHeld(); // lock 잡았는지 확인
+  if (cs->current) {
+    // If we were on cpu, check if we have run for longer than
+    // Granularity(). If so, force picking another task via setting current
+    // to nullptr.
+    // std::cout <<cs->current->status_word.runtime() <<std::endl;
+
+		cs->current->remaining_time -= cs->current->status_word.runtime() - cs->current->runtime_at_last_pick_ns;
+    runtime_at_last_pick_ns = cs->current->status_word.runtime();
+    if (cs->current->remaining_time <= 0) {
+      cs->preempt_curr = true;
+    }
+  }
 }
 
 

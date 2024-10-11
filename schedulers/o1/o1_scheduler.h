@@ -136,8 +136,12 @@ class O1Scheduler : public BasicDispatchScheduler<O1Task> {
   void TaskBlocked(O1Task* task, const Message& msg) final;
   void TaskPreempted(O1Task* task, const Message& msg) final;
   void TaskSwitchto(O1Task* task, const Message& msg) final;
+  void CpuTick(const Message& msg) final;
 
  private:
+  // Checks if we should preempt the current task. If so, sets preempt_curr_.
+  // Note: Should be called with this CPU's rq mutex lock held.
+  void CheckPreemptTick(const Cpu& cpu);
   void O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
                     bool prio_boosted);
   void TaskOffCpu(O1Task* task, bool blocked, bool from_switchto);
