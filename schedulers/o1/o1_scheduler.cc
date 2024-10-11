@@ -227,7 +227,7 @@ void O1Scheduler::CpuTick(const Message& msg) {
       static_cast<const ghost_msg_payload_cpu_tick*>(msg.payload());
   Cpu cpu = topology()->cpu(payload->cpu);
   CpuState* cs = cpu_state(cpu);
-  cs->run_queue.mu_.AssertHeld(); // lock 잡았는지 확인
+  cs->run_queue.GetMu_().AssertHeld(); // lock 잡았는지 확인
 
   // We do not actually need any logic in CpuTick for preemption. Since
   // CpuTick messages wake up the agent, CfsSchedule will eventually be
@@ -240,7 +240,7 @@ void O1Scheduler::CpuTick(const Message& msg) {
 void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
   ABSL_NO_THREAD_SAFETY_ANALYSIS {
   CpuState* cs = cpu_state(cpu);
-  cs->run_queue.mu_.AssertHeld(); // lock 잡았는지 확인
+  cs->run_queue.GetMu_().AssertHeld(); // lock 잡았는지 확인
   if (cs->current) {
     // If we were on cpu, check if we have run for longer than
     // Granularity(). If so, force picking another task via setting current

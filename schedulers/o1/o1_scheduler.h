@@ -88,6 +88,10 @@ class O1Rq {
     return aq_.size();
   }
 
+  absl::Mutex GetMu_() {
+    return mu_;
+  }
+
   bool Empty() const { return Size() == 0; }
 
  private:
