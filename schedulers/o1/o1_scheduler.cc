@@ -50,7 +50,7 @@ void O1Scheduler::DumpState(const Cpu& cpu, int flags) {
 
   const O1Task* current = cs->current;
   const O1Rq* rq = &cs->run_queue;
-  absl::FPrintF(stderr, "SchedState[%d]: %s rq_l=%lu\n", cpu.id(),
+  absl::FPrintF(stderr, "SchedState[%d]: %s aq_l=%lu\n", cpu.id(),
                 current ? current->gtid.describe() : "none", rq->Size());
 }
 
@@ -333,39 +333,39 @@ void O1Rq::Enqueue(O1Task* task) {
 
   absl::MutexLock lock(&mu_);
   if (task->prio_boost)
-    rq_.push_front(task);
+    aq_.push_front(task);
   else
-    rq_.push_back(task);
+    aq_.push_back(task);
 }
 
 O1Task* O1Rq::Dequeue() {
   absl::MutexLock lock(&mu_);
-  if (rq_.empty()) return nullptr;
+  if (aq_.empty()) return nullptr;
 
-  O1Task* task = rq_.front();
+  O1Task* task = aq_.front();
   CHECK(task->queued());
   task->run_state = O1TaskState::kRunnable;
-  rq_.pop_front();
+  aq_.pop_front();
   return task;
 }
 
 void O1Rq::Erase(O1Task* task) {
   CHECK_EQ(task->run_state, O1TaskState::kQueued);
   absl::MutexLock lock(&mu_);
-  size_t size = rq_.size();
+  size_t size = aq_.size();
   if (size > 0) {
     // Check if 'task' is at the back of the runqueue (common case).
     size_t pos = size - 1;
-    if (rq_[pos] == task) {
-      rq_.erase(rq_.cbegin() + pos);
+    if (aq_[pos] == task) {
+      aq_.erase(aq_.cbegin() + pos);
       task->run_state = O1TaskState::kRunnable;
       return;
     }
 
     // Now search for 'task' from the beginning of the runqueue.
     for (pos = 0; pos < size - 1; pos++) {
-      if (rq_[pos] == task) {
-        rq_.erase(rq_.cbegin() + pos);
+      if (aq_[pos] == task) {
+        aq_.erase(aq_.cbegin() + pos);
         task->run_state =  O1TaskState::kRunnable;
         return;
       }

@@ -45,6 +45,10 @@ struct O1Task : public Task<> {
     return run_state == O1TaskState::kRunnable;
   }
 
+  void SetRemainingTime() {
+    remaining_time = 10000000; // 10ms
+  }
+
   O1TaskState run_state = O1TaskState::kBlocked;
   int cpu = -1;
 
@@ -55,6 +59,11 @@ struct O1Task : public Task<> {
   // wakeup - basically when it may be holding locks or other resources
   // that prevent other tasks from making progress.
   bool prio_boost = false;
+
+  // 마지막 remaining_time 업데이트한 시간
+  uint64_t runtime_at_last_pick_ns;
+  // 남은 cpu 실행 시간
+  uint64_t remaining_time;
 };
 
 class O1Rq {
@@ -74,14 +83,15 @@ class O1Rq {
 
   size_t Size() const {
     absl::MutexLock lock(&mu_);
-    return rq_.size();
+    return aq_.size();
   }
 
   bool Empty() const { return Size() == 0; }
 
  private:
   mutable absl::Mutex mu_;
-  std::deque<O1Task*> rq_ ABSL_GUARDED_BY(mu_);
+  std::deque<O1Task*> aq_ ABSL_GUARDED_BY(mu_);
+  std::deque<O1Task*> eq_ ABSL_GUARDED_BY(mu_);
 };
 
 class O1Scheduler : public BasicDispatchScheduler<O1Task> {
@@ -138,6 +148,8 @@ class O1Scheduler : public BasicDispatchScheduler<O1Task> {
     O1Task* current = nullptr;
     std::unique_ptr<Channel> channel = nullptr;
     O1Rq run_queue;
+    // Should we keep running the current task.
+    bool preempt_curr = false;
   } ABSL_CACHELINE_ALIGNED;
 
   inline CpuState* cpu_state(const Cpu& cpu) { return &cpu_states_[cpu.id()]; }
