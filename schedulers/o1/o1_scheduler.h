@@ -73,7 +73,8 @@ class O1Rq {
   O1Rq& operator=(O1Rq&) = delete;
 
   O1Task* Dequeue();
-  void Enqueue(O1Task* task);
+  void EnqueueActive(OoneTask* task);
+  void EnqueueExpired(OoneTask* task);
 
   // Erase 'task' from the runqueue.
   //

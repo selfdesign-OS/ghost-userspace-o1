@@ -94,7 +94,7 @@ void O1Scheduler::Migrate(O1Task* task, Cpu cpu, BarrierToken seqnum) {
 
   // Make task visible in the new runqueue *after* changing the association
   // (otherwise the task can get oncpu while producing into the old queue).
-  cs->run_queue.Enqueue(task);
+  cs->run_queue.EnqueueActive(task);
 
   // Get the agent's attention so it notices the new task.
   enclave()->GetAgent(cpu)->Ping();
@@ -137,7 +137,7 @@ void O1Scheduler::TaskRunnable(O1Task* task, const Message& msg) {
     Migrate(task, cpu, msg.seqnum());
   } else {
     CpuState* cs = cpu_state_of(task);
-    cs->run_queue.Enqueue(task);
+    cs->run_queue.EnqueueActive(task);
   }
 }
 
@@ -174,7 +174,7 @@ void O1Scheduler::TaskYield(O1Task* task, const Message& msg) {
   TaskOffCpu(task, /*blocked=*/false, payload->from_switchto);
 
   CpuState* cs = cpu_state_of(task);
-  cs->run_queue.Enqueue(task);
+  cs->run_queue.EnqueueActive(task);
 
   if (payload->from_switchto) {
     Cpu cpu = topology()->cpu(payload->cpu);
@@ -203,7 +203,7 @@ void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
   task->preempted = true;
   task->prio_boost = true;
   CpuState* cs = cpu_state_of(task);
-  cs->run_queue.Enqueue(task);
+  cs->run_queue.EnqueueActive(task);
 
   if (payload->from_switchto) {
     Cpu cpu = topology()->cpu(payload->cpu);
@@ -296,7 +296,7 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
 
       // Txn commit failed so push 'next' to the front of runqueue.
       next->prio_boost = true;
-      cs->run_queue.Enqueue(next);
+      cs->run_queue.EnqueueActive(next);
     }
   } else {
     // If LocalYield is due to 'prio_boost' then instruct the kernel to
@@ -325,7 +325,7 @@ void O1Scheduler::Schedule(const Cpu& cpu, const StatusWord& agent_sw) {
   O1Schedule(cpu, agent_barrier, agent_sw.boosted_priority());
 }
 
-void O1Rq::Enqueue(O1Task* task) {
+void O1Rq::EnqueueActive(O1Task* task) {
   CHECK_GE(task->cpu, 0);
   CHECK_EQ(task->run_state, O1TaskState::kRunnable);
 
@@ -336,6 +336,19 @@ void O1Rq::Enqueue(O1Task* task) {
     aq_.push_front(task);
   else
     aq_.push_back(task);
+}
+
+void O1Rq::EnqueueExpired(O1Task* task) {
+  CHECK_GE(task->cpu, 0);
+  CHECK_EQ(task->run_state, O1TaskState::kRunnable);
+
+  task->run_state = O1TaskState::kQueued;
+
+  absl::MutexLock lock(&mu_);
+  if (task->prio_boost)
+    eq_.push_front(task);
+  else
+    eq_.push_back(task);
 }
 
 O1Task* O1Rq::Dequeue() {
