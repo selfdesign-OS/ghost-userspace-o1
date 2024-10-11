@@ -88,7 +88,7 @@ class O1Rq {
     return aq_.size();
   }
 
-  absl::Mutex GetMu_() {
+  absl::Mutex& GetMu_() {
     return mu_;
   }
 

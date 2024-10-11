@@ -248,7 +248,7 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
     // std::cout <<cs->current->status_word.runtime() <<std::endl;
 
 		cs->current->remaining_time -= cs->current->status_word.runtime() - cs->current->runtime_at_last_pick_ns;
-    runtime_at_last_pick_ns = cs->current->status_word.runtime();
+    cs->current->runtime_at_last_pick_ns = cs->current->status_word.runtime();
     if (cs->current->remaining_time <= 0) {
       cs->preempt_curr = true;
     }
