@@ -4,8 +4,8 @@
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
-#ifndef GHOST_SCHEDULERS_FIFO_FIFO_SCHEDULER_H
-#define GHOST_SCHEDULERS_FIFO_FIFO_SCHEDULER_H
+#ifndef GHOST_SCHEDULERS_O1_O1_SCHEDULER_H
+#define GHOST_SCHEDULERS_O1_O1_SCHEDULER_H
 
 #include <deque>
 #include <memory>
@@ -15,7 +15,7 @@
 
 namespace ghost {
 
-enum class FifoTaskState {
+enum class O1TaskState {
   kBlocked,   // not on runqueue.
   kRunnable,  // transitory state:
               // 1. kBlocked->kRunnable->kQueued
@@ -25,16 +25,16 @@ enum class FifoTaskState {
 };
 
 // For CHECK and friends.
-std::ostream& operator<<(std::ostream& os, const FifoTaskState& state);
+std::ostream& operator<<(std::ostream& os, const O1TaskState& state);
 
-struct FifoTask : public Task<> {
-  explicit FifoTask(Gtid fifo_task_gtid, ghost_sw_info sw_info)
-      : Task<>(fifo_task_gtid, sw_info) {}
-  ~FifoTask() override {}
+struct O1Task : public Task<> {
+  explicit O1Task(Gtid O1_task_gtid, ghost_sw_info sw_info)
+      : Task<>(O1_task_gtid, sw_info) {}
+  ~O1Task() override {}
 
-  inline bool blocked() const { return run_state == FifoTaskState::kBlocked; }
-  inline bool queued() const { return run_state == FifoTaskState::kQueued; }
-  inline bool oncpu() const { return run_state == FifoTaskState::kOnCpu; }
+  inline bool blocked() const { return run_state == O1TaskState::kBlocked; }
+  inline bool queued() const { return run_state == O1TaskState::kQueued; }
+  inline bool oncpu() const { return run_state == O1TaskState::kOnCpu; }
 
   // N.B. _runnable() is a transitory state typically used during runqueue
   // manipulation. It is not expected to be used from task msg callbacks.
@@ -42,10 +42,10 @@ struct FifoTask : public Task<> {
   // If you are reading this then you probably want to take a closer look
   // at queued() instead.
   inline bool _runnable() const {
-    return run_state == FifoTaskState::kRunnable;
+    return run_state == O1TaskState::kRunnable;
   }
 
-  FifoTaskState run_state = FifoTaskState::kBlocked;
+  O1TaskState run_state = O1TaskState::kBlocked;
   int cpu = -1;
 
   // Whether the last execution was preempted or not.
@@ -57,20 +57,20 @@ struct FifoTask : public Task<> {
   bool prio_boost = false;
 };
 
-class FifoRq {
+class O1Rq {
  public:
-  FifoRq() = default;
-  FifoRq(const FifoRq&) = delete;
-  FifoRq& operator=(FifoRq&) = delete;
+  O1Rq() = default;
+  O1Rq(const O1Rq&) = delete;
+  O1Rq& operator=(O1Rq&) = delete;
 
-  FifoTask* Dequeue();
-  void Enqueue(FifoTask* task);
+  O1Task* Dequeue();
+  void Enqueue(O1Task* task);
 
   // Erase 'task' from the runqueue.
   //
   // Caller must ensure that 'task' is on the runqueue in the first place
   // (e.g. via task->queued()).
-  void Erase(FifoTask* task);
+  void Erase(O1Task* task);
 
   size_t Size() const {
     absl::MutexLock lock(&mu_);
@@ -81,14 +81,14 @@ class FifoRq {
 
  private:
   mutable absl::Mutex mu_;
-  std::deque<FifoTask*> rq_ ABSL_GUARDED_BY(mu_);
+  std::deque<O1Task*> rq_ ABSL_GUARDED_BY(mu_);
 };
 
-class FifoScheduler : public BasicDispatchScheduler<FifoTask> {
+class O1Scheduler : public BasicDispatchScheduler<O1Task> {
  public:
-  explicit FifoScheduler(Enclave* enclave, CpuList cpulist,
-                         std::shared_ptr<TaskAllocator<FifoTask>> allocator);
-  ~FifoScheduler() final {}
+  explicit O1Scheduler(Enclave* enclave, CpuList cpulist,
+                         std::shared_ptr<TaskAllocator<O1Task>> allocator);
+  ~O1Scheduler() final {}
 
   void Schedule(const Cpu& cpu, const StatusWord& sw);
 
@@ -105,7 +105,7 @@ class FifoScheduler : public BasicDispatchScheduler<FifoTask> {
 
   int CountAllTasks() {
     int num_tasks = 0;
-    allocator()->ForEachTask([&num_tasks](Gtid gtid, const FifoTask* task) {
+    allocator()->ForEachTask([&num_tasks](Gtid gtid, const O1Task* task) {
       ++num_tasks;
       return true;
     });
@@ -116,33 +116,33 @@ class FifoScheduler : public BasicDispatchScheduler<FifoTask> {
   static constexpr int kCountAllTasks = 2;
 
  protected:
-  void TaskNew(FifoTask* task, const Message& msg) final;
-  void TaskRunnable(FifoTask* task, const Message& msg) final;
-  void TaskDeparted(FifoTask* task, const Message& msg) final;
-  void TaskDead(FifoTask* task, const Message& msg) final;
-  void TaskYield(FifoTask* task, const Message& msg) final;
-  void TaskBlocked(FifoTask* task, const Message& msg) final;
-  void TaskPreempted(FifoTask* task, const Message& msg) final;
-  void TaskSwitchto(FifoTask* task, const Message& msg) final;
+  void TaskNew(O1Task* task, const Message& msg) final;
+  void TaskRunnable(O1Task* task, const Message& msg) final;
+  void TaskDeparted(O1Task* task, const Message& msg) final;
+  void TaskDead(O1Task* task, const Message& msg) final;
+  void TaskYield(O1Task* task, const Message& msg) final;
+  void TaskBlocked(O1Task* task, const Message& msg) final;
+  void TaskPreempted(O1Task* task, const Message& msg) final;
+  void TaskSwitchto(O1Task* task, const Message& msg) final;
 
  private:
-  void FifoSchedule(const Cpu& cpu, BarrierToken agent_barrier,
+  void O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
                     bool prio_boosted);
-  void TaskOffCpu(FifoTask* task, bool blocked, bool from_switchto);
-  void TaskOnCpu(FifoTask* task, Cpu cpu);
-  void Migrate(FifoTask* task, Cpu cpu, BarrierToken seqnum);
-  Cpu AssignCpu(FifoTask* task);
+  void TaskOffCpu(O1Task* task, bool blocked, bool from_switchto);
+  void TaskOnCpu(O1Task* task, Cpu cpu);
+  void Migrate(O1Task* task, Cpu cpu, BarrierToken seqnum);
+  Cpu AssignCpu(O1Task* task);
   void DumpAllTasks();
 
   struct CpuState {
-    FifoTask* current = nullptr;
+    O1Task* current = nullptr;
     std::unique_ptr<Channel> channel = nullptr;
-    FifoRq run_queue;
+    O1Rq run_queue;
   } ABSL_CACHELINE_ALIGNED;
 
   inline CpuState* cpu_state(const Cpu& cpu) { return &cpu_states_[cpu.id()]; }
 
-  inline CpuState* cpu_state_of(const FifoTask* task) {
+  inline CpuState* cpu_state_of(const O1Task* task) {
     CHECK_GE(task->cpu, 0);
     CHECK_LT(task->cpu, MAX_CPUS);
     return &cpu_states_[task->cpu];
@@ -152,46 +152,46 @@ class FifoScheduler : public BasicDispatchScheduler<FifoTask> {
   Channel* default_channel_ = nullptr;
 };
 
-std::unique_ptr<FifoScheduler> MultiThreadedFifoScheduler(Enclave* enclave,
+std::unique_ptr<O1Scheduler> MultiThreadedO1Scheduler(Enclave* enclave,
                                                           CpuList cpulist);
-class FifoAgent : public LocalAgent {
+class O1Agent : public LocalAgent {
  public:
-  FifoAgent(Enclave* enclave, Cpu cpu, FifoScheduler* scheduler)
+  O1Agent(Enclave* enclave, Cpu cpu, O1Scheduler* scheduler)
       : LocalAgent(enclave, cpu), scheduler_(scheduler) {}
 
   void AgentThread() override;
   Scheduler* AgentScheduler() const override { return scheduler_; }
 
  private:
-  FifoScheduler* scheduler_;
+  O1Scheduler* scheduler_;
 };
 
 template <class EnclaveType>
-class FullFifoAgent : public FullAgent<EnclaveType> {
+class FullO1Agent : public FullAgent<EnclaveType> {
  public:
-  explicit FullFifoAgent(AgentConfig config) : FullAgent<EnclaveType>(config) {
+  explicit FullO1Agent(AgentConfig config) : FullAgent<EnclaveType>(config) {
     scheduler_ =
-        MultiThreadedFifoScheduler(&this->enclave_, *this->enclave_.cpus());
+        MultiThreadedO1Scheduler(&this->enclave_, *this->enclave_.cpus());
     this->StartAgentTasks();
     this->enclave_.Ready();
   }
 
-  ~FullFifoAgent() override {
+  ~FullO1Agent() override {
     this->TerminateAgentTasks();
   }
 
   std::unique_ptr<Agent> MakeAgent(const Cpu& cpu) override {
-    return std::make_unique<FifoAgent>(&this->enclave_, cpu, scheduler_.get());
+    return std::make_unique<O1Agent>(&this->enclave_, cpu, scheduler_.get());
   }
 
   void RpcHandler(int64_t req, const AgentRpcArgs& args,
                   AgentRpcResponse& response) override {
     switch (req) {
-      case FifoScheduler::kDebugRunqueue:
+      case O1Scheduler::kDebugRunqueue:
         scheduler_->debug_runqueue_ = true;
         response.response_code = 0;
         return;
-      case FifoScheduler::kCountAllTasks:
+      case O1Scheduler::kCountAllTasks:
         response.response_code = scheduler_->CountAllTasks();
         return;
       default:
@@ -201,9 +201,9 @@ class FullFifoAgent : public FullAgent<EnclaveType> {
   }
 
  private:
-  std::unique_ptr<FifoScheduler> scheduler_;
+  std::unique_ptr<O1Scheduler> scheduler_;
 };
 
 }  // namespace ghost
 
-#endif  // GHOST_SCHEDULERS_FIFO_FIFO_SCHEDULER_H
+#endif  // GHOST_SCHEDULERS_O1_O1_SCHEDULER_H
