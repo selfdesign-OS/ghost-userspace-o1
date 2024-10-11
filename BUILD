@@ -686,6 +686,35 @@ cc_test(
 )
 
 cc_binary(
+    name = "o1_agent",
+    srcs = [
+        "schedulers/o1/o1_agent.cc",
+    ],
+    copts = compiler_flags,
+    deps = [
+        ":agent",
+        ":o1_scheduler",
+        "@com_google_absl//absl/debugging:symbolize",
+        "@com_google_absl//absl/flags:parse",
+    ],
+)
+
+cc_library(
+    name = "o1_scheduler",
+    srcs = [
+        "schedulers/o1/o1_scheduler.cc",
+        "schedulers/o1/o1_scheduler.h",
+    ],
+    hdrs = [
+        "schedulers/o1/o1_scheduler.h",
+    ],
+    copts = compiler_flags,
+    deps = [
+        ":agent",
+    ],
+)
+
+cc_binary(
     name = "fifo_per_cpu_agent",
     srcs = [
         "schedulers/fifo/per_cpu/fifo_agent.cc",
