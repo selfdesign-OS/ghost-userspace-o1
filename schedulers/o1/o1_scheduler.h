@@ -72,9 +72,10 @@ class O1Rq {
   O1Rq(const O1Rq&) = delete;
   O1Rq& operator=(O1Rq&) = delete;
 
+  void Swap();
   O1Task* Dequeue();
-  void EnqueueActive(OoneTask* task);
-  void EnqueueExpired(OoneTask* task);
+  void EnqueueActive(O1Task* task);
+  void EnqueueExpired(O1Task* task);
 
   // Erase 'task' from the runqueue.
   //

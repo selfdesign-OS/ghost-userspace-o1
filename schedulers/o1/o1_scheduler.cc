@@ -351,9 +351,21 @@ void O1Rq::EnqueueExpired(O1Task* task) {
     eq_.push_back(task);
 }
 
+void O1Rq::Swap() {
+  mu_.AssertHeld();
+  std::swap(aq_, eq_);
+}
+
 O1Task* O1Rq::Dequeue() {
   absl::MutexLock lock(&mu_);
-  if (aq_.empty()) return nullptr;
+  if (aq_.empty()) {
+    if (eq_.empty()) {
+      return nullptr;
+    } else {
+      GHOST_DPRINT(1, stderr, "[Swap Queue called] aq_size: %d, eq_size: %d", SizeOfAq(), SizeOfEq());
+      Swap(aq_, eq_);
+    }
+  }
 
   O1Task* task = aq_.front();
   CHECK(task->queued());
