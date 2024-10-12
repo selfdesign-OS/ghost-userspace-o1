@@ -406,9 +406,9 @@ void O1Rq::EnqueueExpired(O1Task* task) {
 }
 
 void O1Rq::Swap() {
-  GHOST_DPRINT(1,stderr,"swap completed");
   mu_.AssertHeld();
   std::swap(aq_, eq_);
+  GHOST_DPRINT(1,stderr,"[Swap Completed]");
 }
 
 O1Task* O1Rq::Dequeue() {
@@ -417,7 +417,6 @@ O1Task* O1Rq::Dequeue() {
     if (eq_.empty()) {
       return nullptr;
     } else {
-      GHOST_DPRINT(1, stderr, "[Swap Queue called]");
       Swap();
     }
   }
