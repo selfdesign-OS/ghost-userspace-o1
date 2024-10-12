@@ -110,7 +110,7 @@ void O1Scheduler::Migrate(O1Task* task, Cpu cpu, BarrierToken seqnum) {
 void O1Scheduler::TaskNew(O1Task* task, const Message& msg) {
   const ghost_msg_payload_task_new* payload =
       static_cast<const ghost_msg_payload_task_new*>(msg.payload());
-
+  task->SetRemainingTime();
   task->seqnum = msg.seqnum();
   task->run_state = O1TaskState::kBlocked;
 
@@ -292,6 +292,17 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
                                  bool prio_boost) {
   CpuState* cs = cpu_state(cpu);
   O1Task* next = nullptr;
+  if (cs->preempt_curr) {
+    GHOST_DPRINT(3, stderr, "Preempting current task %s on cpu %d", 
+                 cs->current ? cs->current->gtid.describe() : "none", cpu.id());
+    O1Task* prev = cs->current;
+    if (prev) {
+     TaskOffCpu(cs->current, /*blocked=*/false, /*from_switchto=*/false);
+     cs->run_queue.EnqueueExpired(prev);
+    }
+    cs->preempt_curr = false;
+  }
+
   if (!prio_boost) {
     next = cs->current;
     if (!next) next = cs->run_queue.Dequeue();
@@ -395,6 +406,7 @@ void O1Rq::EnqueueExpired(O1Task* task) {
 }
 
 void O1Rq::Swap() {
+  GHOST_DPRINT(1,stderr,"swap completed");
   mu_.AssertHeld();
   std::swap(aq_, eq_);
 }

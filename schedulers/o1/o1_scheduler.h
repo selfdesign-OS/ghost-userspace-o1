@@ -46,7 +46,7 @@ struct O1Task : public Task<> {
   }
 
   void SetRemainingTime() {
-    remaining_time = 10000000; // 10ms
+    remaining_time = 5000000; // 5ms
   }
 
   O1TaskState run_state = O1TaskState::kBlocked;
