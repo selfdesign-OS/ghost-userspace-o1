@@ -249,9 +249,9 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
     // to nullptr.
     // std::cout <<cs->current->status_word.runtime() <<std::endl;
 
-		cs->current->remaining_time -= cs->current->status_word.runtime() - cs->current->runtime_at_last_pick_ns;
-    cs->current->runtime_at_last_pick_ns = cs->current->status_word.runtime();
-    if (cs->current->remaining_time <= 0) {
+    cs->current->remaining_time -= (absl::Now() - cs->current->runtime_at_last_pick);
+    cs->current->SetRuntimeAtLastPick();
+    if (cs->current->remaining_time <= absl::ZeroDuration()) {
       cs->preempt_curr = true;
     }
   }
@@ -283,6 +283,7 @@ void O1Scheduler::TaskOnCpu(O1Task* task, Cpu cpu) {
   GHOST_DPRINT(3, stderr, "Task %s oncpu %d", task->gtid.describe(), cpu.id());
 
   task->run_state = O1TaskState::kOnCpu;
+  task->SetRuntimeAtLastPick();
   task->cpu = cpu.id();
   task->preempted = false;
   task->prio_boost = false;
@@ -399,6 +400,7 @@ void O1Rq::EnqueueExpired(O1Task* task) {
   task->run_state = O1TaskState::kQueued;
 
   absl::MutexLock lock(&mu_);
+  task->SetRemainingTime();
   if (task->prio_boost)
     eq_.push_front(task);
   else

@@ -46,7 +46,11 @@ struct O1Task : public Task<> {
   }
 
   void SetRemainingTime() {
-    remaining_time = 5000000; // 5ms
+    remaining_time = absl::Nanoseconds(10000000); // 10ms
+  }
+
+  void SetRuntimeAtLastPick() {
+    runtime_at_last_pick = absl::Now();
   }
 
   O1TaskState run_state = O1TaskState::kBlocked;
@@ -61,9 +65,9 @@ struct O1Task : public Task<> {
   bool prio_boost = false;
 
   // 마지막 remaining_time 업데이트한 시간
-  uint64_t runtime_at_last_pick_ns;
+  absl::Time runtime_at_last_pick;
   // 남은 cpu 실행 시간
-  uint64_t remaining_time;
+  absl::Duration remaining_time;
 };
 
 class O1Rq {
