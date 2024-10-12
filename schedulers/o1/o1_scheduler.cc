@@ -357,9 +357,12 @@ void O1Scheduler::Schedule(const Cpu& cpu, const StatusWord& agent_sw) {
                agent_barrier);
 
   Message msg;
-  while (!(msg = Peek(cs->channel.get())).empty()) {
-    DispatchMessage(msg);
-    Consume(cs->channel.get(), msg);
+  {
+    absl::MutexLock l(&cs->run_queue.GetMu_());
+    while (!(msg = Peek(cs->channel.get())).empty()) {
+      DispatchMessage(msg);
+      Consume(cs->channel.get(), msg);
+    }
   }
 
   O1Schedule(cpu, agent_barrier, agent_sw.boosted_priority());
