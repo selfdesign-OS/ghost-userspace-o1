@@ -227,6 +227,8 @@ void O1Scheduler::CpuTick(const Message& msg) {
       static_cast<const ghost_msg_payload_cpu_tick*>(msg.payload());
   Cpu cpu = topology()->cpu(payload->cpu);
   CpuState* cs = cpu_state(cpu);
+
+  absl::MutexLock lock(&cs->run_queue.GetMu_());
   cs->run_queue.GetMu_().AssertHeld(); // lock 잡았는지 확인
 
   // We do not actually need any logic in CpuTick for preemption. Since
@@ -357,13 +359,11 @@ void O1Scheduler::Schedule(const Cpu& cpu, const StatusWord& agent_sw) {
                agent_barrier);
 
   Message msg;
-  {
-    absl::MutexLock l(&cs->run_queue.GetMu_());
+
     while (!(msg = Peek(cs->channel.get())).empty()) {
       DispatchMessage(msg);
       Consume(cs->channel.get(), msg);
     }
-  }
 
   O1Schedule(cpu, agent_barrier, agent_sw.boosted_priority());
 }
