@@ -101,7 +101,7 @@ void O1Scheduler::Migrate(O1Task* task, Cpu cpu, BarrierToken seqnum) {
 
   // Make task visible in the new runqueue *after* changing the association
   // (otherwise the task can get oncpu while producing into the old queue).
-  cs->run_queue.EnqueueActive(task);
+  cs->run_queue.Enqueue(task);
 
   // Get the agent's attention so it notices the new task.
   enclave()->GetAgent(cpu)->Ping();
@@ -144,7 +144,7 @@ void O1Scheduler::TaskRunnable(O1Task* task, const Message& msg) {
     Migrate(task, cpu, msg.seqnum());
   } else {
     CpuState* cs = cpu_state_of(task);
-    cs->run_queue.EnqueueActive(task);
+    cs->run_queue.Enqueue(task);
   }
 }
 
@@ -181,7 +181,7 @@ void O1Scheduler::TaskYield(O1Task* task, const Message& msg) {
   TaskOffCpu(task, /*blocked=*/false, payload->from_switchto);
 
   CpuState* cs = cpu_state_of(task);
-  cs->run_queue.EnqueueActive(task);
+  cs->run_queue.Enqueue(task);
 
   if (payload->from_switchto) {
     Cpu cpu = topology()->cpu(payload->cpu);
@@ -210,7 +210,7 @@ void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
   task->preempted = true;
   task->prio_boost = true;
   CpuState* cs = cpu_state_of(task);
-  cs->run_queue.EnqueueActive(task);
+  cs->run_queue.Enqueue(task);
 
   if (payload->from_switchto) {
     Cpu cpu = topology()->cpu(payload->cpu);
@@ -248,7 +248,9 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
     // Granularity(). If so, force picking another task via setting current
     // to nullptr.
     // std::cout <<cs->current->status_word.runtime() <<std::endl;
-
+    if (cs->current->cpu == 1) {
+      // GHOST_DPRINT(1, stderr, "CPU[%d] - GPID[%lld] - remaining time: %lld ns", cs->current->cpu, cs->current->gtid.id(), absl::ToInt64Nanoseconds(cs->current->remaining_time));
+    }
     cs->current->remaining_time -= (absl::Now() - cs->current->runtime_at_last_pick);
     cs->current->SetRuntimeAtLastPick();
     if (cs->current->remaining_time <= absl::ZeroDuration()) {
@@ -299,7 +301,7 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
     O1Task* prev = cs->current;
     if (prev) {
      TaskOffCpu(cs->current, /*blocked=*/false, /*from_switchto=*/false);
-     cs->run_queue.EnqueueExpired(prev);
+     cs->run_queue.Enqueue(prev);
     }
     cs->preempt_curr = false;
   }
@@ -350,7 +352,7 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
 
       // Txn commit failed so push 'next' to the front of runqueue.
       next->prio_boost = true;
-      cs->run_queue.EnqueueActive(next);
+      cs->run_queue.Enqueue(next);
     }
   } else {
     // If LocalYield is due to 'prio_boost' then instruct the kernel to
@@ -378,6 +380,28 @@ void O1Scheduler::Schedule(const Cpu& cpu, const StatusWord& agent_sw) {
     }
 
   O1Schedule(cpu, agent_barrier, agent_sw.boosted_priority());
+}
+
+void O1Rq::Enqueue(O1Task* task) {
+  CHECK_GE(task->cpu, 0);
+  CHECK_EQ(task->run_state, O1TaskState::kRunnable);
+
+  task->run_state = O1TaskState::kQueued;
+
+  if (task->remaining_time > absl::ZeroDuration()) {
+    absl::MutexLock lock(&mu_);
+    if (task->prio_boost)
+      aq_.push_front(task);
+    else
+      aq_.push_back(task);
+  } else {
+    absl::MutexLock lock(&mu_);
+    task->SetRemainingTime();
+    if (task->prio_boost)
+      eq_.push_front(task);
+    else
+      eq_.push_back(task);
+  }
 }
 
 void O1Rq::EnqueueActive(O1Task* task) {
@@ -409,8 +433,8 @@ void O1Rq::EnqueueExpired(O1Task* task) {
 
 void O1Rq::Swap() {
   mu_.AssertHeld();
+  //GHOST_DPRINT(1,stderr,"CPU[%d] - [Swap] - aq_size: %d, eq_size: %d", aq_[0]->cpu, aq_.size(), eq_.size());
   std::swap(aq_, eq_);
-  GHOST_DPRINT(1,stderr,"[Swap Completed]");
 }
 
 O1Task* O1Rq::Dequeue() {
@@ -447,6 +471,26 @@ void O1Rq::Erase(O1Task* task) {
     for (pos = 0; pos < size - 1; pos++) {
       if (aq_[pos] == task) {
         aq_.erase(aq_.cbegin() + pos);
+        task->run_state =  O1TaskState::kRunnable;
+        return;
+      }
+    }
+  }
+
+  size = eq_.size();
+  if (size > 0) {
+    // Check if 'task' is at the back of the runqueue (common case).
+    size_t pos = size - 1;
+    if (eq_[pos] == task) {
+      eq_.erase(eq_.cbegin() + pos);
+      task->run_state = O1TaskState::kRunnable;
+      return;
+    }
+
+    // Now search for 'task' from the beginning of the runqueue.
+    for (pos = 0; pos < size - 1; pos++) {
+      if (eq_[pos] == task) {
+        eq_.erase(eq_.cbegin() + pos);
         task->run_state =  O1TaskState::kRunnable;
         return;
       }

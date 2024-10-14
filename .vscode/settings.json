@@ -1,8 +1,13 @@
 {
     "files.associations": {
+        "random": "cpp",
+        "thread": "cpp",
+        "*.tcc": "cpp",
         "deque": "cpp",
-        "memory": "cpp",
-        "mutex": "cpp",
-        "xutility": "cpp"
+        "list": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "vector": "cpp"
     }
 }

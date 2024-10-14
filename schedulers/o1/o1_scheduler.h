@@ -78,6 +78,7 @@ class O1Rq {
 
   void Swap();
   O1Task* Dequeue();
+  void Enqueue(O1Task* task);
   void EnqueueActive(O1Task* task);
   void EnqueueExpired(O1Task* task);
 
