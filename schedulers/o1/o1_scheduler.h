@@ -46,7 +46,7 @@ struct O1Task : public Task<> {
   }
 
   void SetRemainingTime() {
-    remaining_time = absl::Nanoseconds(10000000); // 10ms
+    remaining_time = absl::Nanoseconds(10000); // 10000ns
   }
 
   void SetRuntimeAtLastPick() {
@@ -80,7 +80,7 @@ class O1Rq {
   O1Task* Dequeue();
   void EnqueueActive(O1Task* task);
   void EnqueueExpired(O1Task* task);
-
+  void Enqueue(O1Task* task);
   // Erase 'task' from the runqueue.
   //
   // Caller must ensure that 'task' is on the runqueue in the first place
