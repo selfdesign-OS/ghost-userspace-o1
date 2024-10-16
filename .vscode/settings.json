@@ -1,8 +1,0 @@
-{
-    "files.associations": {
-        "deque": "cpp",
-        "memory": "cpp",
-        "mutex": "cpp",
-        "xutility": "cpp"
-    }
-}

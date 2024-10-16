@@ -2,3 +2,4 @@
 *.log
 *bazel*
 *.json
+.vscode/*
