@@ -129,7 +129,7 @@ void O1Scheduler::TaskRunnable(O1Task* task, const Message& msg) {
       static_cast<const ghost_msg_payload_task_wakeup*>(msg.payload());
 
   CHECK(task->blocked());
-  GHOST_DPRINT(1,stderr,"task id is %s, remaining tims is %lli",task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
+  GHOST_DPRINT(1,stderr,"Task Runnable: task id is %s, remaining time is %lli",task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   task->run_state = O1TaskState::kRunnable;
 
   // A non-deferrable wakeup gets the same preference as a preempted task.
@@ -195,6 +195,7 @@ void O1Scheduler::TaskBlocked(O1Task* task, const Message& msg) {
       static_cast<const ghost_msg_payload_task_blocked*>(msg.payload());
 
   TaskOffCpu(task, /*blocked=*/true, payload->from_switchto);
+  GHOST_DPRINT(1,stderr,"TASK BLOCKED");
 
   if (payload->from_switchto) {
     Cpu cpu = topology()->cpu(payload->cpu);
@@ -251,7 +252,7 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
     // std::cout <<cs->current->status_word.runtime() <<std::endl;
 
     cs->current->remaining_time -= (absl::Now() - cs->current->runtime_at_last_pick);
-    GHOST_DPRINT(1, stderr, "remaining time is %lli ns, task id is %s",
+    GHOST_DPRINT(1, stderr, "tick: remaining time is %lli ns, task id is %s",
              absl::ToInt64Nanoseconds(cs->current->remaining_time),
              cs->current->gtid.describe());
     cs->current->SetRuntimeAtLastPick();
