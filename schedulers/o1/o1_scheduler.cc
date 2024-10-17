@@ -195,7 +195,7 @@ void O1Scheduler::TaskBlocked(O1Task* task, const Message& msg) {
       static_cast<const ghost_msg_payload_task_blocked*>(msg.payload());
 
   TaskOffCpu(task, /*blocked=*/true, payload->from_switchto);
-  GHOST_DPRINT(1,stderr,"TASK BLOCKED");
+  GHOST_DPRINT(1,stderr,"TASK BLOCKED task is %s",task->gtid.describe());
 
   if (payload->from_switchto) {
     Cpu cpu = topology()->cpu(payload->cpu);
