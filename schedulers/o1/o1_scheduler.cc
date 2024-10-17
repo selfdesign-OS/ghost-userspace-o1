@@ -250,7 +250,7 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
     // std::cout <<cs->current->status_word.runtime() <<std::endl;
 GHOST_DPRINT(1, stderr, "remaining time is %lli ns, task id is %s",
              absl::ToInt64Nanoseconds(cs->current->remaining_time),
-             cs->current->gtid.describe().c_str());
+             cs->current->gtid.describe());
     cs->current->remaining_time -= (absl::Now() - cs->current->runtime_at_last_pick);
     cs->current->SetRuntimeAtLastPick();
     if (cs->current->remaining_time <= absl::ZeroDuration()) {
