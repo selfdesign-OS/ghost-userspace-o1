@@ -199,6 +199,7 @@ void FifoScheduler::TaskPreempted(FifoTask* task, const Message& msg) {
       static_cast<const ghost_msg_payload_task_preempt*>(msg.payload());
 
   TaskOffCpu(task, /*blocked=*/false, payload->from_switchto);
+  GHOST_DPRINT(1,stderr,"TaskPreempted task id : %s",task->gtid.describe());
 
   task->preempted = true;
   task->prio_boost = true;
@@ -238,7 +239,7 @@ void FifoScheduler::TaskOnCpu(FifoTask* task, Cpu cpu) {
   CpuState* cs = cpu_state(cpu);
   cs->current = task;
 
-  GHOST_DPRINT(3, stderr, "Task %s oncpu %d", task->gtid.describe(), cpu.id());
+  GHOST_DPRINT(1, stderr, "Task %s oncpu %d", task->gtid.describe(), cpu.id());
 
   task->run_state = FifoTaskState::kOnCpu;
   task->cpu = cpu.id();
