@@ -129,6 +129,7 @@ void O1Scheduler::TaskRunnable(O1Task* task, const Message& msg) {
       static_cast<const ghost_msg_payload_task_wakeup*>(msg.payload());
 
   CHECK(task->blocked());
+  GHOST_DPRINT(1,stderr,"task id is %s, remaining tims is %lli",task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   task->run_state = O1TaskState::kRunnable;
 
   // A non-deferrable wakeup gets the same preference as a preempted task.
