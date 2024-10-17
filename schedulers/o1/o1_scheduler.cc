@@ -206,7 +206,7 @@ void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
       static_cast<const ghost_msg_payload_task_preempt*>(msg.payload());
 
   TaskOffCpu(task, /*blocked=*/false, payload->from_switchto);
-
+  GHOST_DPRINT(1,stderr,"TaskPreempted task id : %s",task->gtid.describe())
   task->preempted = true;
   task->prio_boost = true;
   CpuState* cs = cpu_state_of(task);
@@ -248,10 +248,11 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
     // Granularity(). If so, force picking another task via setting current
     // to nullptr.
     // std::cout <<cs->current->status_word.runtime() <<std::endl;
-GHOST_DPRINT(1, stderr, "remaining time is %lli ns, task id is %s",
+
+    cs->current->remaining_time -= (absl::Now() - cs->current->runtime_at_last_pick);
+    GHOST_DPRINT(1, stderr, "remaining time is %lli ns, task id is %s",
              absl::ToInt64Nanoseconds(cs->current->remaining_time),
              cs->current->gtid.describe());
-    cs->current->remaining_time -= (absl::Now() - cs->current->runtime_at_last_pick);
     cs->current->SetRuntimeAtLastPick();
     if (cs->current->remaining_time <= absl::ZeroDuration()) {
         GHOST_DPRINT(1, stderr, "preempty_curr is true");
