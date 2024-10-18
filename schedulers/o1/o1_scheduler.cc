@@ -206,9 +206,8 @@ void O1Scheduler::TaskBlocked(O1Task* task, const Message& msg) {
 void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
   const ghost_msg_payload_task_preempt* payload =
       static_cast<const ghost_msg_payload_task_preempt*>(msg.payload());
-
-  TaskOffCpu(task, /*blocked=*/false, payload->from_switchto);
   GHOST_DPRINT(1,stderr,"TaskPreempted task id : %s",task->gtid.describe());
+  TaskOffCpu(task, /*blocked=*/false, payload->from_switchto);
   task->preempted = true;
   task->prio_boost = true;
   CpuState* cs = cpu_state_of(task);
