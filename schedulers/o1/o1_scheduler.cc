@@ -171,6 +171,7 @@ void O1Scheduler::TaskDeparted(O1Task* task, const Message& msg) {
 }
 
 void O1Scheduler::TaskDead(O1Task* task, const Message& msg) {
+  GHOST_DPRINT(1,stderr,"TASK DEAD, task id is %lli",task->gtid.describe());
   CHECK(task->blocked());
   allocator()->FreeTask(task);
 }
