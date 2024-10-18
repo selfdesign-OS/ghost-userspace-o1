@@ -27,6 +27,19 @@ O1Scheduler::O1Scheduler(Enclave* enclave, CpuList cpulist,
   }
 }
 
+bool O1Task::UpdateRemainingTime(bool isOff) {
+	GHOST_DPRINT(1, stderr, 
+	"[%s][%llu] - remaining time: %lld", isOff ? "TaskOffCpu" : "Tick", gtid.id(), absl::ToInt64Nanoseconds(remaining_time));
+	remaining_time -= (absl::Now() - runtime_at_last_pick);
+	if (!isOff) {
+		SetRuntimeAtLastPick();
+		if (remaining_time <= absl:: ZeroDuration()) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void O1Scheduler::DumpAllTasks() {
   fprintf(stderr, "task        state   cpu\n");
   allocator()->ForEachTask([](Gtid gtid, const O1Task* task) {
@@ -248,9 +261,9 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
     // Granularity(). If so, force picking another task via setting current
     // to nullptr.
     // std::cout <<cs->current->status_word.runtime() <<std::endl;
-    cs->current->remaining_time -= (absl::Now() - cs->current->runtime_at_last_pick);
-    cs->current->SetRuntimeAtLastPick();
-    if (cs->current->remaining_time <= absl::ZeroDuration()) {
+    
+    //time slice update
+    if (cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/false)) {
       cs->preempt_curr = true;
     }
   }
@@ -262,6 +275,11 @@ void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
   GHOST_DPRINT(3, stderr, "Task %s offcpu %d", task->gtid.describe(),
                task->cpu);
   CpuState* cs = cpu_state_of(task);
+  
+  //time slice update
+  if (cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/true)) {
+    cs->preempt_curr = true;
+  }
 
   if (task->oncpu()) {
     CHECK_EQ(cs->current, task);
