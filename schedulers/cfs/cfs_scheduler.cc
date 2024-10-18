@@ -600,10 +600,13 @@ void CfsScheduler::CheckPreemptTick(const Cpu& cpu)
     // If we were on cpu, check if we have run for longer than
     // Granularity(). If so, force picking another task via setting current
     // to nullptr.
+    if(cpu.id()==5){
     GHOST_DPRINT(1, stderr, "tick: remaining time is %lli ns, task id is %s",
              cs->current->status_word.runtime() -
                           cs->current->runtime_at_first_pick_ns,
              cs->current->gtid.describe());
+    }
+
     if (absl::Nanoseconds(cs->current->status_word.runtime() -
                           cs->current->runtime_at_first_pick_ns) >
         cs->run_queue.MinPreemptionGranularity()) {
