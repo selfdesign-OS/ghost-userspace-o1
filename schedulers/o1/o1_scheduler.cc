@@ -43,6 +43,7 @@ bool O1Task::UpdateRemainingTime(bool isOff) {
 }
 
 void O1Scheduler::DumpAllTasks() {
+  // GHOST_DPRINT(1, stderr, "[DumpAllTasks]");
   fprintf(stderr, "task        state   cpu\n");
   allocator()->ForEachTask([](Gtid gtid, const O1Task* task) {
     absl::FPrintF(stderr, "%-12s%-8d%-8d%c%c\n", gtid.describe(),
@@ -53,6 +54,7 @@ void O1Scheduler::DumpAllTasks() {
 }
 
 void O1Scheduler::DumpState(const Cpu& cpu, int flags) {
+  // GHOST_DPRINT(1, stderr, "[DumpState][%d]", cpu->cpu);
   if (flags & Scheduler::kDumpAllTasks) {
     DumpAllTasks();
   }
@@ -70,6 +72,7 @@ void O1Scheduler::DumpState(const Cpu& cpu, int flags) {
 }
 
 void O1Scheduler::EnclaveReady() {
+  // GHOST_DPRINT(1, stderr, "[EnclaveReady]");
   for (const Cpu& cpu : cpus()) {
     CpuState* cs = cpu_state(cpu);
     Agent* agent = enclave()->GetAgent(cpu);
@@ -92,6 +95,7 @@ void O1Scheduler::EnclaveReady() {
 // Implicitly thread-safe because it is only called from one agent associated
 // with the default queue.
 Cpu O1Scheduler::AssignCpu(O1Task* task) {
+  // GHOST_DPRINT(1, stderr, "[AssignCpu][%llu] - remaining time: %lld", task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   static auto begin = cpus().begin();
   static auto end = cpus().end();
   static auto next = end;
@@ -103,6 +107,7 @@ Cpu O1Scheduler::AssignCpu(O1Task* task) {
 }
 
 void O1Scheduler::Migrate(O1Task* task, Cpu cpu, BarrierToken seqnum) {
+  // GHOST_DPRINT(1, stderr, "[Migrate][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   CHECK_EQ(task->run_state, O1TaskState::kRunnable);
   CHECK_EQ(task->cpu, -1);
 
@@ -123,6 +128,7 @@ void O1Scheduler::Migrate(O1Task* task, Cpu cpu, BarrierToken seqnum) {
 }
 
 void O1Scheduler::TaskNew(O1Task* task, const Message& msg) {
+  // GHOST_DPRINT(1, stderr, "[TaskNew][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   const ghost_msg_payload_task_new* payload =
       static_cast<const ghost_msg_payload_task_new*>(msg.payload());
   task->SetRemainingTime();
@@ -140,6 +146,7 @@ void O1Scheduler::TaskNew(O1Task* task, const Message& msg) {
 }
 
 void O1Scheduler::TaskRunnable(O1Task* task, const Message& msg) {
+  // GHOST_DPRINT(1, stderr, "[TaskRunnable][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   const ghost_msg_payload_task_wakeup* payload =
       static_cast<const ghost_msg_payload_task_wakeup*>(msg.payload());
 
@@ -164,6 +171,7 @@ void O1Scheduler::TaskRunnable(O1Task* task, const Message& msg) {
 }
 
 void O1Scheduler::TaskDeparted(O1Task* task, const Message& msg) {
+  // GHOST_DPRINT(1, stderr, "[TaskDeparted][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   const ghost_msg_payload_task_departed* payload =
       static_cast<const ghost_msg_payload_task_departed*>(msg.payload());
 
@@ -185,11 +193,13 @@ void O1Scheduler::TaskDeparted(O1Task* task, const Message& msg) {
 }
 
 void O1Scheduler::TaskDead(O1Task* task, const Message& msg) {
+  // GHOST_DPRINT(1, stderr, "[TaskDead][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   CHECK(task->blocked());
   allocator()->FreeTask(task);
 }
 
 void O1Scheduler::TaskYield(O1Task* task, const Message& msg) {
+  // GHOST_DPRINT(1, stderr, "[TaskYield][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   const ghost_msg_payload_task_yield* payload =
       static_cast<const ghost_msg_payload_task_yield*>(msg.payload());
 
@@ -205,6 +215,7 @@ void O1Scheduler::TaskYield(O1Task* task, const Message& msg) {
 }
 
 void O1Scheduler::TaskBlocked(O1Task* task, const Message& msg) {
+  // GHOST_DPRINT(1, stderr, "[TaskBlocked][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   const ghost_msg_payload_task_blocked* payload =
       static_cast<const ghost_msg_payload_task_blocked*>(msg.payload());
 
@@ -217,6 +228,7 @@ void O1Scheduler::TaskBlocked(O1Task* task, const Message& msg) {
 }
 
 void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
+  // GHOST_DPRINT(1, stderr, "[TaskPreempted][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   const ghost_msg_payload_task_preempt* payload =
       static_cast<const ghost_msg_payload_task_preempt*>(msg.payload());
 
@@ -234,6 +246,7 @@ void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
 }
 
 void O1Scheduler::TaskSwitchto(O1Task* task, const Message& msg) {
+  // GHOST_DPRINT(1, stderr, "[TaskSwitchto][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   TaskOffCpu(task, /*blocked=*/true, /*from_switchto=*/false);
 }
 
@@ -274,6 +287,7 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
 
 void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
                                bool from_switchto) {
+  // GHOST_DPRINT(1, stderr, "[TaskOffCpu][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   GHOST_DPRINT(3, stderr, "Task %s offcpu %d", task->gtid.describe(),
                task->cpu);
   CpuState* cs = cpu_state_of(task);
@@ -296,6 +310,7 @@ void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
 }
 
 void O1Scheduler::TaskOnCpu(O1Task* task, Cpu cpu) {
+  // GHOST_DPRINT(1, stderr, "[TaskOnCpu][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   CpuState* cs = cpu_state(cpu);
   cs->current = task;
 
@@ -310,6 +325,7 @@ void O1Scheduler::TaskOnCpu(O1Task* task, Cpu cpu) {
 
 void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
                                  bool prio_boost) {
+  // GHOST_DPRINT(1, stderr, "[O1Schedule][%d]", cpu->cpu);
   CpuState* cs = cpu_state(cpu);
   O1Task* next = nullptr;
   if (cs->preempt_curr) {
@@ -383,6 +399,7 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
 }
 
 void O1Scheduler::Schedule(const Cpu& cpu, const StatusWord& agent_sw) {
+  // GHOST_DPRINT(1, stderr, "[Schedule][%d]", task->cpu);
   BarrierToken agent_barrier = agent_sw.barrier();
   CpuState* cs = cpu_state(cpu);
 
@@ -400,6 +417,7 @@ void O1Scheduler::Schedule(const Cpu& cpu, const StatusWord& agent_sw) {
 }
 
 void O1Rq::Enqueue(O1Task* task) {
+  // GHOST_DPRINT(1, stderr, "[Enqueue][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   CHECK_GE(task->cpu, 0);
   CHECK_EQ(task->run_state, O1TaskState::kRunnable);
 
@@ -450,10 +468,12 @@ void O1Rq::EnqueueExpired(O1Task* task) {
 }
 
 void O1Rq::Swap() {
+  // GHOST_DPRINT(1, stderr, "[Swap][%d]", aq_[0]->cpu);
   std::swap(aq_, eq_);
 }
 
 O1Task* O1Rq::Dequeue() {
+  // GHOST_DPRINT(1, stderr, "[Dequeue][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   absl::MutexLock lock(&mu_);
   if (aq_.empty()) {
     if (eq_.empty()) {
@@ -471,6 +491,7 @@ O1Task* O1Rq::Dequeue() {
 }
 
 void O1Rq::Erase(O1Task* task) {
+  // GHOST_DPRINT(1, stderr, "[Erase][%d][%llu] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   CHECK_EQ(task->run_state, O1TaskState::kQueued);
   absl::MutexLock lock(&mu_);
   size_t size = aq_.size();
