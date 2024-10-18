@@ -248,10 +248,9 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
     // Granularity(). If so, force picking another task via setting current
     // to nullptr.
     // std::cout <<cs->current->status_word.runtime() <<std::endl;
-    cs->current->remaining_time -= (absl::Now() - cs->current->runtime_at_last_pick);
-    cs->current->SetRuntimeAtLastPick();
-    if (cs->current->remaining_time <= absl::ZeroDuration()) {
-      cs->preempt_curr = true;
+    //time slice update
+    if (cs->current->UpdateRemainingTime(/*isOff=*/false)) {
+      cs->preempt_curr = true
     }
   }
 }
@@ -259,6 +258,11 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
 
 void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
                                bool from_switchto) {
+  //time slice update
+  if (cs->current->UpdateRemainingTime(/*isOff=*/true)) {
+    cs->preempt_curr = true
+  }
+  
   GHOST_DPRINT(3, stderr, "Task %s offcpu %d", task->gtid.describe(),
                task->cpu);
   CpuState* cs = cpu_state_of(task);
