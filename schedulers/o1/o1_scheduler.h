@@ -53,16 +53,16 @@ struct O1Task : public Task<> {
     runtime_at_last_pick = absl::Now();
   }
 bool UpdateRemainingTime(bool isOff) {
-    GHOST_DPRINT(1, stderr, "[isCpuOff: %d][%llu] - remaining time: %lld",
-                 isOff ? 1 : 0, gtid.id(), absl::ToInt64Nanoseconds(remaining_time));
-
-    if (!isOff) {
-        SetRuntimeAtLastPick();
-        if (remaining_time <= absl::ZeroDuration()) {
-            return true;
-        }
-    }
-    return false;
+	GHOST_DPRINT(1, stderr, 
+	"[isCpuOff: %d][%llu] - remaining time: %lld", isOff, gtid.id(), absl::ToInt64Nanoseconds(remaining_time));
+	remaining_time -= (absl::Now() - runtime_at_last_pick);
+	if (!isOff) {
+		SetRuntimeAtLastPick();
+		if (remaining_time <= absl:: ZeroDuration()) {
+			return true;
+		}
+	}
+	return false;
 }
 
   O1TaskState run_state = O1TaskState::kBlocked;
