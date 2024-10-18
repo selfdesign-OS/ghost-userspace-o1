@@ -142,27 +142,27 @@ int main() {
   {
     printf("SimpleExpMany\n");
     ghost::ScopedTime time;
-    ghost::SimpleExpMany(1000);
+    ghost::SimpleExpMany(30);
   }
-  {
-    printf("BusyExp\n");
-    ghost::ScopedTime time;
-    ghost::BusyExpRunFor(1000, absl::Milliseconds(10));
-  }
-  {
-    printf("TaskDeparted\n");
-    ghost::ScopedTime time;
-    ghost::TaskDeparted();
-  }
-  {
-    printf("TaskDepartedMany\n");
-    ghost::ScopedTime time;
-    ghost::TaskDepartedMany(1000);
-  }
-  {
-    printf("TaskDepartedManyRace\n");
-    ghost::ScopedTime time;
-    ghost::TaskDepartedManyRace(1000);
-  }
+  // {
+  //   printf("BusyExp\n");
+  //   ghost::ScopedTime time;
+  //   ghost::BusyExpRunFor(1000, absl::Milliseconds(10));
+  // }
+  // {
+  //   printf("TaskDeparted\n");
+  //   ghost::ScopedTime time;
+  //   ghost::TaskDeparted();
+  // }
+  // {
+  //   printf("TaskDepartedMany\n");
+  //   ghost::ScopedTime time;
+  //   ghost::TaskDepartedMany(1000);
+  // }
+  // {
+  //   printf("TaskDepartedManyRace\n");
+  //   ghost::ScopedTime time;
+  //   ghost::TaskDepartedManyRace(1000);
+  // }
   return 0;
 }
