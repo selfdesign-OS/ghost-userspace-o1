@@ -46,7 +46,7 @@ struct O1Task : public Task<> {
   }
 
   void SetRemainingTime() {
-    remaining_time = absl::Nanoseconds(10000); // 10000ns
+    remaining_time = absl::Nanoseconds(10000000); // 10000000ns
   }
 
   void SetRuntimeAtLastPick() {
@@ -157,6 +157,8 @@ class O1Scheduler : public BasicDispatchScheduler<O1Task> {
   void Migrate(O1Task* task, Cpu cpu, BarrierToken seqnum);
   Cpu AssignCpu(O1Task* task);
   void DumpAllTasks();
+
+  void TimeDown(const Cpu& cpu);
 
   struct CpuState {
     O1Task* current = nullptr;

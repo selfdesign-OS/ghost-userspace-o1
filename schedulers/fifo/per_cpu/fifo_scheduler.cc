@@ -168,6 +168,7 @@ void FifoScheduler::TaskDead(FifoTask* task, const Message& msg) {
 }
 
 void FifoScheduler::TaskYield(FifoTask* task, const Message& msg) {
+  GHOST_DPRINT(1, stderr, "[TaskYield] gtid: %lld", task->gtid.id());
   const ghost_msg_payload_task_yield* payload =
       static_cast<const ghost_msg_payload_task_yield*>(msg.payload());
 
