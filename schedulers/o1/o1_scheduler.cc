@@ -265,7 +265,7 @@ void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
   GHOST_DPRINT(1, stderr, "Task %s off cpu %d", task->gtid.describe(),
                task->cpu);
 
-  UpdateRemainingTime(/*isTaskOffCpu=*/true)
+  cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/true)
   CpuState* cs = cpu_state_of(task);
 
   if (task->oncpu()) {
