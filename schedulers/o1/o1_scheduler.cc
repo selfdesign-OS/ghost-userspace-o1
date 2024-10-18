@@ -266,7 +266,7 @@ void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
                task->cpu);
 
   CpuState* cs = cpu_state_of(task);
-  cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/true)
+  cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/true);
 
   if (task->oncpu()) {
     CHECK_EQ(cs->current, task);
