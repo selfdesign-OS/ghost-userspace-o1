@@ -46,7 +46,7 @@ struct O1Task : public Task<> {
   }
 
   void SetRemainingTime() {
-    remaining_time = absl::Nanoseconds(10000); // 0.5ms
+    remaining_time = absl::Nanoseconds(1000000); // ms
   }
 
   void SetRuntimeAtLastPick() {
@@ -54,8 +54,11 @@ struct O1Task : public Task<> {
   }
 bool UpdateRemainingTime(bool isOff) {
 	GHOST_DPRINT(1, stderr, 
-	"[isCpuOff: %d][%llu] - remaining time: %lld", isOff, gtid.id(), absl::ToInt64Nanoseconds(remaining_time));
+	"[beforeUpdate: %d][%llu] - remaining time: %lld", isOff, gtid.id(), absl::ToInt64Nanoseconds(remaining_time));
 	remaining_time -= (absl::Now() - runtime_at_last_pick);
+  GHOST_DPRINT(1, stderr, 
+	"[afterUpdate: %d][%llu] - remaining time: %lld", isOff, gtid.id(), absl::ToInt64Nanoseconds(remaining_time));
+
 	if (!isOff) {
 		SetRuntimeAtLastPick();
 		if (remaining_time <= absl:: ZeroDuration()) {
