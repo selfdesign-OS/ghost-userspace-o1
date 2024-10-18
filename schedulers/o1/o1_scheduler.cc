@@ -421,6 +421,8 @@ void O1Rq::EnqueueActive(O1Task* task) {
 }
 
 void O1Rq::EnqueueExpired(O1Task* task) {
+    GHOST_DPRINT(1,stderr,"[enqueue Expried] task id : %s remaining Time : %lli enqueue Expried",task->retask->gtid.describe(),absl::ToInt64Nanoseconds(task->remaining_time));
+
   CHECK_GE(task->cpu, 0);
   CHECK_EQ(task->run_state, O1TaskState::kRunnable);
 
