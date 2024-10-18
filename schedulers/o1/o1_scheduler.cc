@@ -152,6 +152,7 @@ void O1Scheduler::TaskRunnable(O1Task* task, const Message& msg) {
 void O1Scheduler::TaskDeparted(O1Task* task, const Message& msg) {
   const ghost_msg_payload_task_departed* payload =
       static_cast<const ghost_msg_payload_task_departed*>(msg.payload());
+  GHOST_DPRINT(1,stderr,"TASK departed, task id is %lli",task->gtid.describe());
 
   if (task->oncpu() || payload->from_switchto) {
     TaskOffCpu(task, /*blocked=*/false, payload->from_switchto);
