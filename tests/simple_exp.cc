@@ -159,7 +159,7 @@ int main() {
   {
     printf("BusyExp\n");
     ghost::ScopedTime time;
-    ghost::BusyExpRunFor(5, absl::Milliseconds(20));
+    ghost::BusyExpRunFor(1000, absl::Milliseconds(10));
   }
   {
     printf("TaskDeparted\n");
