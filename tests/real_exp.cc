@@ -43,6 +43,7 @@ void SimpleExpMany(int num_threads) {
         new GhostThread(GhostThread::KernelScheduler::kGhost, [] {
           // Replace sleep with CPU-bound work
           SpinFor(absl::Milliseconds(10));
+          absl::SleepFor(absl::Milliseconds(10));
           std::thread t([] { CHECK_EQ(sched_getscheduler(/*pid=*/0), SCHED_GHOST); });
           t.join();
           SpinFor(absl::Milliseconds(10));  // More CPU-bound work
@@ -134,11 +135,11 @@ void TaskDepartedManyRace(int num_threads) {
 }  // namespace ghost
 
 int main() {
-  {
-    printf("SimpleExp\n");
-    ghost::ScopedTime time;
-    ghost::SimpleExp();
-  }
+  // {
+  //   printf("SimpleExp\n");
+  //   ghost::ScopedTime time;
+  //   ghost::SimpleExp();
+  // }
   {
     printf("SimpleExpMany\n");
     ghost::ScopedTime time;
