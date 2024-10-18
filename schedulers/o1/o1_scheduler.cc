@@ -418,7 +418,6 @@ void O1Scheduler::Schedule(const Cpu& cpu, const StatusWord& agent_sw) {
 }
 
 void O1Rq::Enqueue(O1Task* task) {
-  GHOST_DPRINT(1, stderr, "[Enqueue][%d][%s] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   CHECK_GE(task->cpu, 0);
   CHECK_EQ(task->run_state, O1TaskState::kRunnable);
 
@@ -427,12 +426,14 @@ void O1Rq::Enqueue(O1Task* task) {
   absl::MutexLock lock(&mu_);
 
   if (task->remaining_time > absl::ZeroDuration()) {
+    GHOST_DPRINT(1, stderr, "[EnqueueActive][%d][%s] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
 	  if (task->prio_boost)
 	    aq_.push_front(task);
 	  else
 	    aq_.push_back(task);
   }
   else {
+    GHOST_DPRINT(1, stderr, "[EnqueueExpired][%d][%s] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
 	  task->SetRemainingTime();
 	  if (task->prio_boost)
 	    eq_.push_front(task);
@@ -469,7 +470,7 @@ void O1Rq::EnqueueExpired(O1Task* task) {
 }
 
 void O1Rq::Swap() {
-  GHOST_DPRINT(1, stderr, "[Swap][%d]", aq_[0]->cpu);
+  GHOST_DPRINT(1, stderr, "[Swap]");
   std::swap(aq_, eq_);
 }
 
