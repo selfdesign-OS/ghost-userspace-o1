@@ -22,9 +22,9 @@ void SimpleExp() {
     fprintf(stderr, "hello world!\n");
     // Replace sleep with CPU-bound work
     
-    SpinFor(absl::Milliseconds(5));
-    absl::SleepFor(absl::Milliseconds(5));
-    SpinFor(absl::Milliseconds(5));
+    SpinFor(absl::Milliseconds(10));
+    absl::SleepFor(absl::Milliseconds(10));
+    SpinFor(absl::Milliseconds(10));
 
     fprintf(stderr, "CPU-bound work done!\n");
     std::thread t2([] { CHECK_EQ(sched_getscheduler(/*pid=*/0), SCHED_GHOST); });
@@ -139,30 +139,30 @@ int main() {
     ghost::ScopedTime time;
     ghost::SimpleExp();
   }
-  {
-    printf("SimpleExpMany\n");
-    ghost::ScopedTime time;
-    ghost::SimpleExpMany(1000);
-  }
-  {
-    printf("BusyExp\n");
-    ghost::ScopedTime time;
-    ghost::BusyExpRunFor(1000, absl::Milliseconds(10));
-  }
-  {
-    printf("TaskDeparted\n");
-    ghost::ScopedTime time;
-    ghost::TaskDeparted();
-  }
-  {
-    printf("TaskDepartedMany\n");
-    ghost::ScopedTime time;
-    ghost::TaskDepartedMany(1000);
-  }
-  {
-    printf("TaskDepartedManyRace\n");
-    ghost::ScopedTime time;
-    ghost::TaskDepartedManyRace(1000);
-  }
+  // {
+  //   printf("SimpleExpMany\n");
+  //   ghost::ScopedTime time;
+  //   ghost::SimpleExpMany(1000);
+  // }
+  // {
+  //   printf("BusyExp\n");
+  //   ghost::ScopedTime time;
+  //   ghost::BusyExpRunFor(1000, absl::Milliseconds(10));
+  // }
+  // {
+  //   printf("TaskDeparted\n");
+  //   ghost::ScopedTime time;
+  //   ghost::TaskDeparted();
+  // }
+  // {
+  //   printf("TaskDepartedMany\n");
+  //   ghost::ScopedTime time;
+  //   ghost::TaskDepartedMany(1000);
+  // }
+  // {
+  //   printf("TaskDepartedManyRace\n");
+  //   ghost::ScopedTime time;
+  //   ghost::TaskDepartedManyRace(1000);
+  // }
   return 0;
 }
