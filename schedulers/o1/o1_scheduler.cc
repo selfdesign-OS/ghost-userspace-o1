@@ -115,8 +115,7 @@ void O1Scheduler::Migrate(O1Task* task, Cpu cpu, BarrierToken seqnum) {
   const Channel* channel = cs->channel.get();
   CHECK(channel->AssociateTask(task->gtid, seqnum, /*status=*/nullptr));
 
-  GHOST_DPRINT(3, stderr, "Migrating task %s to cpu %d", task->gtid.describe(),
-               cpu.id());
+  //GHOST_DPRINT(3, stderr, "Migrating task %s to cpu %d", task->gtid.describe(), cpu.id());
   task->cpu = cpu.id();
 
   // Make task visible in the new runqueue *after* changing the association
@@ -131,6 +130,7 @@ void O1Scheduler::TaskNew(O1Task* task, const Message& msg) {
   GHOST_DPRINT(1, stderr, "[TaskNew][%d][%s] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   const ghost_msg_payload_task_new* payload =
       static_cast<const ghost_msg_payload_task_new*>(msg.payload());
+  
   task->SetRemainingTime();
   task->seqnum = msg.seqnum();
   task->run_state = O1TaskState::kBlocked;
@@ -150,6 +150,7 @@ void O1Scheduler::TaskRunnable(O1Task* task, const Message& msg) {
   const ghost_msg_payload_task_wakeup* payload =
       static_cast<const ghost_msg_payload_task_wakeup*>(msg.payload());
 
+  //if(task->cpu == 1) GHOST_DPRINT(1, stderr, "[TaskRunnable] CPU[%d] - GPID[%lld] - remaining time: %lld ns", task->cpu, task->gtid.id(), absl::ToInt64Nanoseconds(task->remaining_time));
   CHECK(task->blocked());
   task->run_state = O1TaskState::kRunnable;
 
@@ -175,6 +176,7 @@ void O1Scheduler::TaskDeparted(O1Task* task, const Message& msg) {
   const ghost_msg_payload_task_departed* payload =
       static_cast<const ghost_msg_payload_task_departed*>(msg.payload());
 
+  if(task->cpu == 1) GHOST_DPRINT(1, stderr, "[TaskDepareted] CPU[%d] - GPID[%lld] - remaining time: %lld ns", task->cpu, task->gtid.id(), absl::ToInt64Nanoseconds(task->remaining_time));
   if (task->oncpu() || payload->from_switchto) {
     TaskOffCpu(task, /*blocked=*/false, payload->from_switchto);
   } else if (task->queued()) {
@@ -195,11 +197,16 @@ void O1Scheduler::TaskDeparted(O1Task* task, const Message& msg) {
 void O1Scheduler::TaskDead(O1Task* task, const Message& msg) {
   GHOST_DPRINT(1, stderr, "[TaskDead][%d][%s] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   CHECK(task->blocked());
+  //GHOST_DPRINT(1, stderr, "[TaskDead] gtid: %lld", task->gtid.id());
   allocator()->FreeTask(task);
 }
 
 void O1Scheduler::TaskYield(O1Task* task, const Message& msg) {
+<<<<<<< HEAD
   GHOST_DPRINT(1, stderr, "[TaskYield][%d][%s] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
+=======
+  GHOST_DPRINT(1, stderr, "[TaskYield] gtid: %lld", task->gtid.id());
+>>>>>>> 6067dfbeb22a6022347ad88d56f9ce3e7420e1a0
   const ghost_msg_payload_task_yield* payload =
       static_cast<const ghost_msg_payload_task_yield*>(msg.payload());
 
@@ -218,7 +225,14 @@ void O1Scheduler::TaskBlocked(O1Task* task, const Message& msg) {
   GHOST_DPRINT(1, stderr, "[TaskBlocked][%d][%s] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   const ghost_msg_payload_task_blocked* payload =
       static_cast<const ghost_msg_payload_task_blocked*>(msg.payload());
+  
+  // task->remaining_time -= absl::Now() - task->runtime_at_last_pick;
+  // if (task->remaining_time <= absl::ZeroDuration()) {
+  //   GHOST_DPRINT(1, stderr, "[TimeSlice Out] CPU[%d] - GPID[%lld] - remaining time: %lld ns", task->cpu, task->gtid.id(), absl::ToInt64Nanoseconds(task->remaining_time));
+  //   cpu_state(topology()->cpu(payload->cpu))->preempt_curr = true;
+  // }
 
+  if(task->cpu == 1) GHOST_DPRINT(1, stderr, "[TasksBlocked] CPU[%d] - GPID[%lld] - remaining time: %lld ns", task->cpu, task->gtid.id(), absl::ToInt64Nanoseconds(task->remaining_time));
   TaskOffCpu(task, /*blocked=*/true, payload->from_switchto);
 
   if (payload->from_switchto) {
@@ -232,6 +246,13 @@ void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
   const ghost_msg_payload_task_preempt* payload =
       static_cast<const ghost_msg_payload_task_preempt*>(msg.payload());
 
+  // task->remaining_time -= absl::Now() - task->runtime_at_last_pick;
+  // if (task->remaining_time <= absl::ZeroDuration()) {
+  //   GHOST_DPRINT(1, stderr, "[TimeSlice Out] CPU[%d] - GPID[%lld] - remaining time: %lld ns", task->cpu, task->gtid.id(), absl::ToInt64Nanoseconds(task->remaining_time));
+  //   cpu_state(topology()->cpu(payload->cpu))->preempt_curr = true;
+  // }
+
+  if(task->cpu == 1) GHOST_DPRINT(1, stderr, "[TaskPreempted] CPU[%d] - GPID[%lld] - remaining time: %lld ns", task->cpu, task->gtid.id(), absl::ToInt64Nanoseconds(task->remaining_time));;
   TaskOffCpu(task, /*blocked=*/false, payload->from_switchto);
 
   task->preempted = true;
@@ -246,16 +267,22 @@ void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
 }
 
 void O1Scheduler::TaskSwitchto(O1Task* task, const Message& msg) {
+<<<<<<< HEAD
   GHOST_DPRINT(1, stderr, "[TaskSwitchto][%d][%s] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
+=======
+  GHOST_DPRINT(1, stderr, "[TaskSwitchto] gtid: %lld", task->gtid.id());
+>>>>>>> 6067dfbeb22a6022347ad88d56f9ce3e7420e1a0
   TaskOffCpu(task, /*blocked=*/true, /*from_switchto=*/false);
 }
 
 void O1Scheduler::CpuTick(const Message& msg) {
   const ghost_msg_payload_cpu_tick* payload =
       static_cast<const ghost_msg_payload_cpu_tick*>(msg.payload());
+
+  
   Cpu cpu = topology()->cpu(payload->cpu);
   CpuState* cs = cpu_state(cpu);
-
+  //GHOST_DPRINT(1, stderr, "[CpuTick] gtid: %lld", cs->current->gtid.id());
   absl::MutexLock lock(&cs->run_queue.GetMu_());
   cs->run_queue.GetMu_().AssertHeld(); // lock 잡았는지 확인
 
@@ -276,14 +303,33 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
     // Granularity(). If so, force picking another task via setting current
     // to nullptr.
     // std::cout <<cs->current->status_word.runtime() <<std::endl;
+<<<<<<< HEAD
     
     //time slice update
     if (cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/false)) {
+=======
+
+    //GHOST_DPRINT(1, stderr, "[CheckPreemptTick] gtid: %lld", cs->current->gtid.id());
+    cs->current->remaining_time -= (absl::Now() - cs->current->runtime_at_last_pick);
+    cs->current->SetRuntimeAtLastPick();
+    if (cs->current->remaining_time <= absl::ZeroDuration()) {
+      GHOST_DPRINT(1, stderr, "[TimeSlice Out] CPU[%d] - GPID[%lld] - remaining time: %lld ns", cs->current->cpu, cs->current->gtid.id(), absl::ToInt64Nanoseconds(cs->current->remaining_time));
+>>>>>>> 6067dfbeb22a6022347ad88d56f9ce3e7420e1a0
       cs->preempt_curr = true;
     }
   }
 }
 
+void O1Scheduler::TimeDown(const Cpu& cpu){
+
+  CpuState* cs = cpu_state(cpu);
+
+  cs->current->remaining_time -= (absl::Now() - cs->current->runtime_at_last_pick);
+  if (cs->current->remaining_time <= absl::ZeroDuration()) {
+    GHOST_DPRINT(1, stderr, "[TimeDown] CPU[%d] - GPID[%lld] - remaining time: %lld ns", cs->current->cpu, cs->current->gtid.id(), absl::ToInt64Nanoseconds(cs->current->remaining_time));
+    cs->preempt_curr = true;
+  }
+}
 
 void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
                                bool from_switchto) {
@@ -297,12 +343,20 @@ void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
     cs->preempt_curr = true;
   }
 
+  task->remaining_time -= absl::Now() - task->runtime_at_last_pick;
+  if (task->remaining_time <= absl::ZeroDuration()) {
+    GHOST_DPRINT(1, stderr, "[TimeSlice Out] CPU[%d] - GPID[%lld] - remaining time: %lld ns", task->cpu, task->gtid.id(), absl::ToInt64Nanoseconds(task->remaining_time));
+    cs->preempt_curr = true;
+  }
+
   if (task->oncpu()) {
     CHECK_EQ(cs->current, task);
+    if(task->cpu == 1)GHOST_DPRINT(1, stderr, "[TaskOff: ->nullptr] CPU[%d] - GPID[%lld] - remaining time: %lld ns", task->cpu, task->gtid.id(), absl::ToInt64Nanoseconds(task->remaining_time));
     cs->current = nullptr;
   } else {
     CHECK(from_switchto);
     CHECK_EQ(task->run_state, O1TaskState::kBlocked);
+    if(task->cpu == 1) GHOST_DPRINT(1, stderr, "[TaskOff: kBlocked] CPU[%d] - GPID[%lld] - remaining time: %lld ns", task->cpu, task->gtid.id(), absl::ToInt64Nanoseconds(task->remaining_time));
   }
 
   task->run_state =
@@ -314,7 +368,8 @@ void O1Scheduler::TaskOnCpu(O1Task* task, Cpu cpu) {
   CpuState* cs = cpu_state(cpu);
   cs->current = task;
 
-  GHOST_DPRINT(3, stderr, "Task %s oncpu %d", task->gtid.describe(), cpu.id());
+  //GHOST_DPRINT(3, stderr, "Task %s oncpu %d", task->gtid.describe(), cpu.id());
+  if(task->cpu == 1) GHOST_DPRINT(1, stderr, "[TaskOn] CPU[%d] - GPID[%lld] - remaining time: %lld ns", task->cpu, task->gtid.id(), absl::ToInt64Nanoseconds(task->remaining_time));
 
   task->run_state = O1TaskState::kOnCpu;
   task->SetRuntimeAtLastPick();
@@ -333,8 +388,8 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
                  cs->current ? cs->current->gtid.describe() : "none", cpu.id());
     O1Task* prev = cs->current;
     if (prev) {
-     TaskOffCpu(cs->current, /*blocked=*/false, /*from_switchto=*/false);
-     cs->run_queue.Enqueue(prev);
+      TaskOffCpu(cs->current, /*blocked=*/false, /*from_switchto=*/false);
+      cs->run_queue.Enqueue(prev);
     }
     cs->preempt_curr = false;
   }
@@ -421,6 +476,7 @@ void O1Rq::Enqueue(O1Task* task) {
   CHECK_GE(task->cpu, 0);
   CHECK_EQ(task->run_state, O1TaskState::kRunnable);
 
+  //GHOST_DPRINT(1, stderr, "[Enqueue] gtid: %lld", task->gtid.id());
   task->run_state = O1TaskState::kQueued;
 
   absl::MutexLock lock(&mu_);
@@ -481,6 +537,7 @@ O1Task* O1Rq::Dequeue() {
     if (eq_.empty()) {
       return nullptr;
     } else {
+      GHOST_DPRINT(1, stderr, "[Swap] count : %d", eq_.size());
       Swap();
     }
   }
@@ -489,6 +546,7 @@ O1Task* O1Rq::Dequeue() {
   CHECK(task->queued());
   task->run_state = O1TaskState::kRunnable;
   aq_.pop_front();
+  //GHOST_DPRINT(1, stderr, "[Deqeueue] gtid: %lld", task->gtid.id());
   return task;
 }
 
@@ -496,6 +554,7 @@ void O1Rq::Erase(O1Task* task) {
   GHOST_DPRINT(1, stderr, "[Erase][%d][%s] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
   CHECK_EQ(task->run_state, O1TaskState::kQueued);
   absl::MutexLock lock(&mu_);
+  if(task->cpu == 1) GHOST_DPRINT(1, stderr, "[Erase] gtid: %lld", task->gtid.id());
   size_t size = aq_.size();
   if (size > 0) {
     // Check if 'task' is at the back of the runqueue (common case).
