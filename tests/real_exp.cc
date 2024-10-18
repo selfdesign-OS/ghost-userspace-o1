@@ -143,7 +143,7 @@ int main() {
   {
     printf("SimpleExpMany\n");
     ghost::ScopedTime time;
-    ghost::SimpleExpMany(30);
+    ghost::SimpleExpMany(1000);
   }
   // {
   //   printf("BusyExp\n");
