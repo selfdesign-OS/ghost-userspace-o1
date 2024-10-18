@@ -250,7 +250,7 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
     // std::cout <<cs->current->status_word.runtime() <<std::endl;
     //time slice update
     if (cs->current->UpdateRemainingTime(/*isOff=*/false)) {
-      cs->preempt_curr = true
+      cs->preempt_curr = true;
     }
   }
 }
@@ -258,14 +258,12 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
 
 void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
                                bool from_switchto) {
-  //time slice update
-  if (cs->current->UpdateRemainingTime(/*isOff=*/true)) {
-    cs->preempt_curr = true
-  }
-  
   GHOST_DPRINT(3, stderr, "Task %s offcpu %d", task->gtid.describe(),
                task->cpu);
-  CpuState* cs = cpu_state_of(task);
+  CpuState* cs = cpu_state_of(task);//time slice update
+  if (cs->current->UpdateRemainingTime(/*isOff=*/true)) {
+    cs->preempt_curr = true;
+  }
 
   if (task->oncpu()) {
     CHECK_EQ(cs->current, task);
