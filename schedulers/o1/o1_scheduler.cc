@@ -29,8 +29,10 @@ O1Scheduler::O1Scheduler(Enclave* enclave, CpuList cpulist,
 
 bool O1Task::UpdateRemainingTime(bool isOff) {
 	GHOST_DPRINT(1, stderr, 
-	"[%s][%llu] - remaining time: %lld", isOff ? "TaskOffCpu" : "Tick", gtid.describe(), absl::ToInt64Nanoseconds(remaining_time));
+	"[%s][%llu][BeforeUpdate] - remaining time: %lld", isOff ? "TaskOffCpu" : "Tick", gtid.describe(), absl::ToInt64Nanoseconds(remaining_time));
 	remaining_time -= (absl::Now() - runtime_at_last_pick);
+  GHOST_DPRINT(1, stderr, 
+	"[%s][%llu][AfterUpdate] - remaining time: %lld", isOff ? "TaskOffCpu" : "Tick", gtid.describe(), absl::ToInt64Nanoseconds(remaining_time));
 	if (!isOff) {
 		SetRuntimeAtLastPick();
 		if (remaining_time <= absl:: ZeroDuration()) {
