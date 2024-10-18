@@ -437,6 +437,7 @@ void O1Rq::EnqueueExpired(O1Task* task) {
 }
 
 void O1Rq::Swap() {
+  GHOST_DPRINT(1,stderr,"Swap completed");
   std::swap(aq_, eq_);
 }
 
