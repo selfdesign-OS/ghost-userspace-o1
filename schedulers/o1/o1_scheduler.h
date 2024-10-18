@@ -46,7 +46,7 @@ struct O1Task : public Task<> {
   }
 
   void SetRemainingTime() {
-    remaining_time = absl::Nanoseconds(10*500000); // 5ms
+    remaining_time = absl::Nanoseconds(10*50000); // 5ms
   }
 
   void SetRuntimeAtLastPick() {
