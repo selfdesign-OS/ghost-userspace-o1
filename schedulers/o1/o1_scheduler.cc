@@ -250,14 +250,11 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
     // to nullptr.
     // std::cout <<cs->current->status_word.runtime() <<std::endl;
 
-    cs->current->remaining_time -= (absl::Now() - cs->current->runtime_at_last_pick);
     GHOST_DPRINT(1, stderr, "tick: remaining time is %lli ns, task id is %s",
              absl::ToInt64Nanoseconds(cs->current->remaining_time),
              cs->current->gtid.describe());
-    cs->current->SetRuntimeAtLastPick();
-    if (cs->current->remaining_time <= absl::ZeroDuration()) {
-        GHOST_DPRINT(1, stderr, "preempty_curr is true");
-      cs->preempt_curr = true;
+    if (cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/false)) {
+      cs->preempt_curr = true
     }
   }
 }
@@ -265,8 +262,10 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
 
 void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
                                bool from_switchto) {
-  GHOST_DPRINT(1, stderr, "Task %s offcpu %d", task->gtid.describe(),
+  GHOST_DPRINT(1, stderr, "Task %s off cpu %d", task->gtid.describe(),
                task->cpu);
+
+  UpdateRemainingTime(/*isTaskOffCpu=*/true)
   CpuState* cs = cpu_state_of(task);
 
   if (task->oncpu()) {
