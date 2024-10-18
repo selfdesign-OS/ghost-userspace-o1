@@ -139,11 +139,11 @@ int main() {
     ghost::ScopedTime time;
     ghost::SimpleExp();
   }
-  // {
-  //   printf("SimpleExpMany\n");
-  //   ghost::ScopedTime time;
-  //   ghost::SimpleExpMany(1000);
-  // }
+  {
+    printf("SimpleExpMany\n");
+    ghost::ScopedTime time;
+    ghost::SimpleExpMany(10);
+  }
   // {
   //   printf("BusyExp\n");
   //   ghost::ScopedTime time;
