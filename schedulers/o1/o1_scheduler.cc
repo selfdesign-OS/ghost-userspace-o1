@@ -254,7 +254,7 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
              absl::ToInt64Nanoseconds(cs->current->remaining_time),
              cs->current->gtid.describe());
     if (cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/false)) {
-      cs->preempt_curr = true
+      cs->preempt_curr = true;
     }
   }
 }
