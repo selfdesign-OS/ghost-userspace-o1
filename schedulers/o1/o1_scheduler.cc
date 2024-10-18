@@ -295,6 +295,7 @@ void O1Scheduler::TaskOnCpu(O1Task* task, Cpu cpu) {
 
 void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
                                  bool prio_boost) {
+  prio_boost=false;
   CpuState* cs = cpu_state(cpu);
   O1Task* next = nullptr;
   if (cs->preempt_curr) {
