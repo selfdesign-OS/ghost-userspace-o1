@@ -28,10 +28,10 @@ ABSL_FLAG(bool, print_get, false,
 ABSL_FLAG(bool, print_range, false,
           "Prints an additional section that shows the results for Range "
           "queries, if true (default: false).");
-ABSL_FLAG(std::string, rocksdb_db_path, "",
+ABSL_FLAG(std::string, rocksdb_db_path, "/home/ghost2/ghost-userspace/rocksdb_data",
           "The path to the RocksDB database. Creates the database if it does "
           "not exist.");
-ABSL_FLAG(double, throughput, 200.0,
+ABSL_FLAG(double, throughput, 2000.0,
           "The synthetic throughput generated in units of requests per second "
           "(default: 20,000 requests per second).");
 ABSL_FLAG(
