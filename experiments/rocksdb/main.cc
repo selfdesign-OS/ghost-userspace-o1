@@ -46,7 +46,7 @@ ABSL_FLAG(std::string, cfs_dispatcher_cpus, "2",
           "that the dispatchers run on (default: 11).");
 ABSL_FLAG(size_t, num_workers, 4,
           "The number of workers. Each worker has one thread. (default: 6).");
-ABSL_FLAG(std::string, worker_cpus, "4-7",
+ABSL_FLAG(std::string, worker_cpus, "",
           "The CPUs that worker threads run on for CFS (Linux Completely Fair "
           "Scheduler) experiments. Each worker thread is pinned to its own "
           "CPU. Thus, the number of CPUs must be equal to the 'num_workers' "
