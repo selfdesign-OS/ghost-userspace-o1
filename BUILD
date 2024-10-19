@@ -254,6 +254,18 @@ cc_binary(
 )
 
 cc_binary(
+    name = "fairness_test",
+    srcs = [
+        "tests/fairness_test.cc",
+    ],
+    copts = compiler_flags,
+    deps = [
+        ":base",
+        ":ghost",
+    ],
+)
+
+cc_binary(
     name = "simple_exp",
     srcs = [
         "tests/simple_exp.cc",
