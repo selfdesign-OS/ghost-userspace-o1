@@ -38,11 +38,11 @@ void SimpleExpMany(int num_threads) {
     threads.emplace_back(
         new GhostThread(GhostThread::KernelScheduler::kGhost, [] {
           // Replace sleep with CPU-bound work
-          SpinFor(absl::Milliseconds(30));
+          SpinFor(absl::Milliseconds(10));
           std::thread t([] { CHECK_EQ(sched_getscheduler(/*pid=*/0), SCHED_GHOST); });
           t.join();
           absl::SleepFor(absl::Milliseconds(10));
-          SpinFor(absl::Milliseconds(30));  // More CPU-bound work
+          SpinFor(absl::Milliseconds(10));  // More CPU-bound work
         }));
   }
 
