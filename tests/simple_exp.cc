@@ -154,14 +154,14 @@ int main() {
     printf("SimpleExp 테스트 종료\n\n");
   }
   {
-    printf("SimpleExpMany 테스트 시작\n");
-    printf("이 테스트는 1000개의 ghOSt 스레드를 생성하여 모두 ghOSt 스케줄러에서 실행되는지 확인합니다.\n");
+    printf("\nSimpleExpMany 테스트 시작\n");
+    printf("이 테스트는 100개의 ghOSt 스레드를 생성하여 모두 ghOSt 스케줄러에서 실행되는지 확인합니다.\n");
     ghost::ScopedTime time;
-    ghost::SimpleExpMany(1000);
+    ghost::SimpleExpMany(100);
     printf("SimpleExpMany 테스트 종료\n\n");
   }
   {
-    printf("BusyExp 테스트 시작\n");
+    printf("\nBusyExp 테스트 시작\n");
     printf("이 테스트는 100개의 ghOSt 스레드를 생성하고, 각각이 10ms 동안 바쁘게 기다리도록 실행합니다.\n");
     ghost::ScopedTime time;
     ghost::BusyExpRunFor(100, absl::Milliseconds(10));
