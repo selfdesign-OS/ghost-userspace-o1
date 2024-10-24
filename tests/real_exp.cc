@@ -137,6 +137,10 @@ int main() {
   //   ghost::SimpleExp();
   // }
   {
+    printf("이 테스트는 300개의 ghOSt 스레드를 생성하고 실행하는 테스트입니다.\n");
+    printf("각 스레드는 30ms 동안 CPU 바운드 작업을 수행하며, 중간에 스레드가 ghOSt 스케줄러에서 실행 중인지 확인한 후 추가적인 CPU 바운드 작업을 합니다.\n");
+    printf("SimpleExpMany 테스트는 여러 스레드를 병렬로 실행하여 ghOSt 스케줄러에서의 동작을 확인합니다.\n\n");
+    
     printf("SimpleExpMany\n");
     ghost::ScopedTime time;
     ghost::SimpleExpMany(300);
