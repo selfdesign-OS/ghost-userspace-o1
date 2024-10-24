@@ -31,7 +31,7 @@ ABSL_FLAG(bool, print_range, false,
 ABSL_FLAG(std::string, rocksdb_db_path, "",
           "The path to the RocksDB database. Creates the database if it does "
           "not exist.");
-ABSL_FLAG(double, throughput, 5000.0,
+ABSL_FLAG(double, throughput, 1000.0,
           "The synthetic throughput generated in units of requests per second "
           "(default: 20,000 requests per second).");
 ABSL_FLAG(
