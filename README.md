@@ -6,10 +6,10 @@ Original repository link: [GitHub Link](https://github.com/google/ghost-userspac
 
 ### Test Demonstration Videos on YouTube
 <a href="https://youtu.be/3K4QTmFbsxM" target="_blank">
-  <img src="https://img.shields.io/badge/YouTube-Video1-FF0000?logo=youtube&logoColor=white" alt="Test1" style="width: 150px;"/>
+  <img src="https://img.shields.io/badge/YouTube-Test1-FF0000?logo=youtube&logoColor=white" alt="Test1" style="width: 150px;"/>
 </a>
 <a href="https://youtu.be/_bYUfDNG5EQ" target="_blank">
-  <img src="https://img.shields.io/badge/YouTube-Video2-FF0000?logo=youtube&logoColor=white" alt="Test2" style="width: 150px;"/>
+  <img src="https://img.shields.io/badge/YouTube-Test2-FF0000?logo=youtube&logoColor=white" alt="Test2" style="width: 150px;"/>
 </a>
 
 ### Members
@@ -19,7 +19,7 @@ Original repository link: [GitHub Link](https://github.com/google/ghost-userspac
 |[JaehyeongIm](https://github.com/JaehyeongIm)|[DingWoonee](https://github.com/DingWoonee)|[bangbang444](https://github.com/bangbang444)|
 
 ### Technologies Used
-![Badge](https://img.shields.io/badge/ghost%20framework-gray.svg?style=flat-square) <img src="https://img.shields.io/badge/C++-00599C?style=flat-square&logo=C%2B%2B&logoColor=white"/> <img src="https://img.shields.io/badge/Ubuntu-E95420?style=flat-square&logo=Ubuntu&logoColor=white"/>
+![Badge](https://img.shields.io/badge/ghOSt%20framework-gray.svg?style=flat-square) <img src="https://img.shields.io/badge/C++-00599C?style=flat-square&logo=C%2B%2B&logoColor=white"/> <img src="https://img.shields.io/badge/Ubuntu-E95420?style=flat-square&logo=Ubuntu&logoColor=white"/>
 
 # 1 서론
 
