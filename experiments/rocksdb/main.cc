@@ -31,7 +31,7 @@ ABSL_FLAG(bool, print_range, false,
 ABSL_FLAG(std::string, rocksdb_db_path, "",
           "The path to the RocksDB database. Creates the database if it does "
           "not exist.");
-ABSL_FLAG(double, throughput, 20000.0,
+ABSL_FLAG(double, throughput, 5000.0,
           "The synthetic throughput generated in units of requests per second "
           "(default: 20,000 requests per second).");
 ABSL_FLAG(
@@ -39,14 +39,14 @@ ABSL_FLAG(
     "The share of requests that are range queries. This value must be greater "
     "than or equal to 0.0 and less than or equal to 1.0. The share of requests "
     "that are Get requests is '1 - range_query_ratio'. (default: 0.0).");
-ABSL_FLAG(std::string, load_generator_cpus, "10",
+ABSL_FLAG(std::string, load_generator_cpus, "1",
           "The CPUs that the load generator threads run on (default: 10).");
-ABSL_FLAG(std::string, cfs_dispatcher_cpus, "11",
+ABSL_FLAG(std::string, cfs_dispatcher_cpus, "2",
           "For CFS (Linux Completely Fair Scheduler) experiments, the CPUs "
           "that the dispatchers run on (default: 11).");
-ABSL_FLAG(size_t, num_workers, 6,
+ABSL_FLAG(size_t, num_workers, 4,
           "The number of workers. Each worker has one thread. (default: 6).");
-ABSL_FLAG(std::string, worker_cpus, "12-17",
+ABSL_FLAG(std::string, worker_cpus, "",
           "The CPUs that worker threads run on for CFS (Linux Completely Fair "
           "Scheduler) experiments. Each worker thread is pinned to its own "
           "CPU. Thus, the number of CPUs must be equal to the 'num_workers' "
@@ -77,13 +77,13 @@ ABSL_FLAG(absl::Duration, get_exponential_mean, absl::Microseconds(0),
 ABSL_FLAG(size_t, batch, 1,
           "The maximum number of requests assigned to a worker at once. This "
           "number must be greater than 0. (default: 1 request)");
-ABSL_FLAG(absl::Duration, experiment_duration, absl::InfiniteDuration(),
+ABSL_FLAG(absl::Duration, experiment_duration, absl::Seconds(10),
           "The experiment duration (default: infinity).");
 ABSL_FLAG(absl::Duration, discard_duration, absl::Seconds(2),
           "All results from when the experiment starts to when the discard "
           "duration has elapsed are discarded. We do not want the results to "
           "include initialization costs, such as page faults. (default: 2s).");
-ABSL_FLAG(std::string, scheduler, "cfs",
+ABSL_FLAG(std::string, scheduler, "ghost",
           "The scheduler to use (\"cfs\" for Linux Completely Fair Scheduler "
           "or \"ghost\" for ghOSt, default: \"cfs\")");
 ABSL_FLAG(
