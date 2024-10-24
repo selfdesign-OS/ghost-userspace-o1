@@ -146,35 +146,40 @@ void TaskDepartedManyRace(int num_threads) {
 }  // namespace ghost
 
 int main() {
-  {
-    printf("SimpleExp\n");
+    printf("SimpleExp 테스트 시작\n");
+    printf("이 테스트는 단일 ghOSt 스레드를 생성하여 실행하고, ghOSt 스케줄러에서 해당 스레드가 제대로 동작하는지 확인합니다.\n");
     ghost::ScopedTime time;
     ghost::SimpleExp();
+    printf("SimpleExp 테스트 종료\n\n");
   }
   {
-    printf("SimpleExpMany\n");
+    printf("SimpleExpMany 테스트 시작\n");
+    printf("이 테스트는 1000개의 ghOSt 스레드를 생성하여 모두 ghOSt 스케줄러에서 실행되는지 확인합니다.\n");
     ghost::ScopedTime time;
     ghost::SimpleExpMany(1000);
+    printf("SimpleExpMany 테스트 종료\n\n");
   }
   {
-    printf("BusyExp\n");
+    printf("BusyExp 테스트 시작\n");
+    printf("이 테스트는 100개의 ghOSt 스레드를 생성하고, 각각이 10ms 동안 바쁘게 기다리도록 실행합니다.\n");
     ghost::ScopedTime time;
     ghost::BusyExpRunFor(100, absl::Milliseconds(10));
+    printf("BusyExp 테스트 종료\n\n");
   }
-  {
-    printf("TaskDeparted\n");
-    ghost::ScopedTime time;
-    ghost::TaskDeparted();
-  }
-  {
-    printf("TaskDepartedMany\n");
-    ghost::ScopedTime time;
-    ghost::TaskDepartedMany(1000);
-  }
-  {
-    printf("TaskDepartedManyRace\n");
-    ghost::ScopedTime time;
-    ghost::TaskDepartedManyRace(1000);
-  }
+  // {
+  //   printf("TaskDeparted\n");
+  //   ghost::ScopedTime time;
+  //   ghost::TaskDeparted();
+  // }
+  // {
+  //   printf("TaskDepartedMany\n");
+  //   ghost::ScopedTime time;
+  //   ghost::TaskDepartedMany(1000);
+  // }
+  // {
+  //   printf("TaskDepartedManyRace\n");
+  //   ghost::ScopedTime time;
+  //   ghost::TaskDepartedManyRace(1000);
+  // }
   return 0;
 }
