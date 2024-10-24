@@ -1,3 +1,9 @@
+### Original Repository
+This project is a modification of [ghost-userspace](https://github.com/google/ghost-userspace).  
+Many thanks to the original author for their fantastic work!
+
+Original repository link: [GitHub Link](https://github.com/google/ghost-userspace)
+
 ### 테스트 시연 영상 Youtue</br>
 [영상1](https://youtu.be/3K4QTmFbsxM)</br>
 [영상2](https://youtu.be/_bYUfDNG5EQ)</br>
