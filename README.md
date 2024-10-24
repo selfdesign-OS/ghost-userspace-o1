@@ -4,16 +4,22 @@ Many thanks to the original author for their fantastic work!
 
 Original repository link: [GitHub Link](https://github.com/google/ghost-userspace)
 
-### 테스트 시연 영상 Youtue</br>
-[영상1](https://youtu.be/3K4QTmFbsxM)</br>
-[영상2](https://youtu.be/_bYUfDNG5EQ)</br>
+### Test Demonstration Videos on YouTube
+<a href="https://youtu.be/3K4QTmFbsxM" target="_blank">
+  <img src="https://img.shields.io/badge/YouTube-Test1-FF0000?logo=youtube&logoColor=white" alt="Test1" style="width: 150px;"/>
+</a>
+<a href="https://youtu.be/_bYUfDNG5EQ" target="_blank">
+  <img src="https://img.shields.io/badge/YouTube-Test2-FF0000?logo=youtube&logoColor=white" alt="Test2" style="width: 150px;"/>
+</a>
 
-### 멤버
+### Members
 |Jae-hyeong|Sung-woon|byeong-hyeon|
 |:-:|:-:|:-:|
 |<img src="https://github.com/user-attachments/assets/ef510219-2286-4048-9810-505ca2b5d5e6" alt="jae-hyeong" width="100" height="100">|<img src="https://github.com/user-attachments/assets/b9478ab7-b1b6-4313-bbc8-38e195364dde" alt="dingwoonee" width="100" height="100">|<img src="https://github.com/user-attachments/assets/d75b48a4-c3bb-4280-be3c-e0fbf4ea8464" alt="dingwoonee" width="100" height="100">|
 |[JaehyeongIm](https://github.com/JaehyeongIm)|[DingWoonee](https://github.com/DingWoonee)|[bangbang444](https://github.com/bangbang444)|
-<br>  
+
+### Technologies Used
+![Badge](https://img.shields.io/badge/ghOSt%20framework-gray.svg?style=flat-square) <img src="https://img.shields.io/badge/C++-00599C?style=flat-square&logo=C%2B%2B&logoColor=white"/> <img src="https://img.shields.io/badge/Ubuntu-E95420?style=flat-square&logo=Ubuntu&logoColor=white"/>
 
 # 1 서론
 
