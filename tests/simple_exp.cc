@@ -146,6 +146,7 @@ void TaskDepartedManyRace(int num_threads) {
 }  // namespace ghost
 
 int main() {
+  {
     printf("SimpleExp 테스트 시작\n");
     printf("이 테스트는 단일 ghOSt 스레드를 생성하여 실행하고, ghOSt 스케줄러에서 해당 스레드가 제대로 동작하는지 확인합니다.\n");
     ghost::ScopedTime time;
