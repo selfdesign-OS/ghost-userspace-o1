@@ -5,6 +5,7 @@
 #include <thread>
 #include <condition_variable>
 #include <mutex>
+#include <cmath>
 
 #include "lib/base.h"
 #include "lib/ghost.h"
@@ -32,65 +33,74 @@ void FairnessTest(int num_threads) {
   std::vector<std::unique_ptr<GhostThread>> threads;
   std::vector<absl::Duration> execution_times(num_threads);
 
-  // Pi 계산을 위한 작은 델타 값 설정 (더 작은 값일수록 계산 시간이 길어짐)
-  const double delta = 0.0;
+  const double delta = 1.0 / 10000000000;
 
   // Pi 계산 함수
   auto calculatePi = [&]() {
     double pi = 0.0;
-    for (int i = 0; i < 1000000000; i++) {
+    for (int i = 0; i < 10000000; i++) {
       pi += delta / (1.0 + ((i + 0.5) * delta) * ((i + 0.5) * delta));
+      pi += sin(i) * cos(i) / tan(i + 1.0);
     }
     return pi * 4.0;
   };
 
-  // 각 스레드에서 실행할 작업 정의
+  // 스레드 생성 및 실행
   for (int i = 0; i < num_threads; i++) {
     threads.emplace_back(new GhostThread(GhostThread::KernelScheduler::kGhost, [&, i] {
-      // 준비 완료 상태로 설정
+      // 스레드 준비 상태
       {
         std::unique_lock<std::mutex> lock(cv_m);
         num_threads_ready++;
         if (num_threads_ready == num_threads) {
-          ready = 1; // 모든 스레드가 준비되면 신호 전송
+          ready = 1;
           cv.notify_all();
         } else {
-          cv.wait(lock, [] { return ready == 1; }); // 준비 완료 신호를 기다림
+          cv.wait(lock, [] { return ready == 1; });
         }
       }
 
+      // Pi 계산 시작
       absl::Time start = absl::Now();
-      calculatePi();
+      printf("Thread %d started\n", i);
+
+      double result = calculatePi();
+
       absl::Time end = absl::Now();
+      printf("Thread %d finished in %0.2f ms, Result: %f\n", i, absl::ToDoubleMilliseconds(end - start), result);
       execution_times[i] = end - start;
     }));
   }
 
-  // 모든 스레드 실행
+  // 스레드 종료 대기
   for (auto& t : threads) {
     t->Join();
   }
 
-  // 실행 시간 출력 및 분포 분석
-  absl::Duration total_time;
+  // 실행 시간 출력 및 평균 시간 계산
+  double total_time_ms = 0.0;
   for (int i = 0; i < num_threads; i++) {
-    printf("Thread %d execution time: %0.2f ms\n", i, absl::ToDoubleMilliseconds(execution_times[i]));
-    total_time += execution_times[i];
+    double exec_time_ms = absl::ToDoubleMilliseconds(execution_times[i]);
+    printf("Thread %d execution time: %0.2f ms\n", i, exec_time_ms);
+    total_time_ms += exec_time_ms;
   }
 
-  absl::Duration average_time = total_time / num_threads;
-  printf("Average execution time: %0.2f ms\n", absl::ToDoubleMilliseconds(average_time));
+  // 평균 실행 시간 계산
+  double average_time_ms = total_time_ms / num_threads;
+  printf("Average execution time: %0.2f ms\n", average_time_ms);
 
-  // 표준 편차 계산 (공정성 측정)
-  absl::Duration variance = absl::ZeroDuration();
+  // 표준 편차 계산
+  double variance_ms = 0.0;
   for (const auto& time : execution_times) {
-    // 시간의 차이 계산 및 제곱
-    auto diff = time - average_time;
-    variance += absl::Nanoseconds(absl::ToDoubleNanoseconds(diff) * absl::ToDoubleNanoseconds(diff));
+    double diff_ms = absl::ToDoubleMilliseconds(time) - average_time_ms;
+    variance_ms += diff_ms * diff_ms;  // 제곱 차이 누적
   }
-  absl::Duration stddev = absl::Nanoseconds(std::sqrt(absl::ToDoubleNanoseconds(variance) / num_threads));
-  printf("Standard deviation of execution times: %0.2f ms\n", absl::ToDoubleMilliseconds(stddev));
+
+  // 분산의 평균을 구하고 제곱근을 취해 표준 편차 계산
+  double stddev_ms = std::sqrt(variance_ms / num_threads);
+  printf("Standard deviation of execution times: %0.2f ms\n", stddev_ms);
 }
+
 
 }  // namespace
 }  // namespace ghost
@@ -99,7 +109,7 @@ int main() {
   {
     printf("FairnessTest\n");
     ghost::ScopedTime time;
-    ghost::FairnessTest(100);
+    ghost::FairnessTest(16);
   }
   return 0;
 }
