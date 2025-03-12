@@ -21,6 +21,9 @@ Original repository link: [GitHub Link](https://github.com/google/ghost-userspac
 ### Technologies Used
 ![Badge](https://img.shields.io/badge/ghOSt%20framework-gray.svg?style=flat-square) <img src="https://img.shields.io/badge/C++-00599C?style=flat-square&logo=C%2B%2B&logoColor=white"/> <img src="https://img.shields.io/badge/Ubuntu-E95420?style=flat-square&logo=Ubuntu&logoColor=white"/>
 
+# 0 환경구축
+- https://earthy-door-ce5.notion.site/Ghost-by-996861ed21dc41c592325fd0ec6ebb2f
+
 # 1 서론
 
 운영체제의 자원 관리 시스템은 여러 부분으로 나뉩니다. 그중에서도 중요한 역할을 하는 것이 스케줄러입니다. 스케줄러는 CPU와 같은 제한된 자원을 여러 프로그램이나 작업 간에 효율적으로 분배하는 역할을 합니다. 특히, 스케줄러는 각 작업(task)이 언제, 어느 정도의 자원을 사용할 수 있을지를 결정하는 핵심적인 시스템입니다.
