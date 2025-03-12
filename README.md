@@ -4,7 +4,7 @@ Many thanks to the original author for their fantastic work!
 
 Original repository link: [GitHub Link](https://github.com/google/ghost-userspace)
 
-### 환경세팅
+### 실행 환경 구축 가이드
 - https://earthy-door-ce5.notion.site/Ghost-by-996861ed21dc41c592325fd0ec6ebb2f
 ### Test Demonstration Videos on YouTube
 <a href="https://youtu.be/3K4QTmFbsxM" target="_blank">
