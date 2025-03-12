@@ -4,6 +4,8 @@ Many thanks to the original author for their fantastic work!
 
 Original repository link: [GitHub Link](https://github.com/google/ghost-userspace)
 
+### 환경세팅
+- https://earthy-door-ce5.notion.site/Ghost-by-996861ed21dc41c592325fd0ec6ebb2f
 ### Test Demonstration Videos on YouTube
 <a href="https://youtu.be/3K4QTmFbsxM" target="_blank">
   <img src="https://img.shields.io/badge/YouTube-Test1-FF0000?logo=youtube&logoColor=white" alt="Test1" style="width: 150px;"/>
@@ -20,9 +22,6 @@ Original repository link: [GitHub Link](https://github.com/google/ghost-userspac
 
 ### Technologies Used
 ![Badge](https://img.shields.io/badge/ghOSt%20framework-gray.svg?style=flat-square) <img src="https://img.shields.io/badge/C++-00599C?style=flat-square&logo=C%2B%2B&logoColor=white"/> <img src="https://img.shields.io/badge/Ubuntu-E95420?style=flat-square&logo=Ubuntu&logoColor=white"/>
-
-# 0 환경구축
-- https://earthy-door-ce5.notion.site/Ghost-by-996861ed21dc41c592325fd0ec6ebb2f
 
 # 1 서론
 
