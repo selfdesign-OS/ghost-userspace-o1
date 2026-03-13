@@ -12,6 +12,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/flags/parse.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "lib/base.h"
@@ -113,5 +114,6 @@ TEST_F(O1Test, MultipleShortTasksCompleteWithoutPreemption) {
 
 int main(int argc, char** argv) {
   testing::InitGoogleMock(&argc, argv);
+  absl::ParseCommandLine(argc, argv);
   return RUN_ALL_TESTS();
 }
