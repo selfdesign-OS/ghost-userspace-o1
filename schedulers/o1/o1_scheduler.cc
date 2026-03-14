@@ -371,6 +371,20 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
   CpuState* cs = cpu_state(cpu);
   O1Task* next = nullptr;
 
+  // CpuTick 없이도 타임슬라이스 초과를 감지하기 위해
+  // 에이전트가 깨어날 때마다 현재 태스크의 경과 시간을 직접 확인한다.
+  if (cs->current && !cs->preempt_curr) {
+    absl::Duration elapsed = absl::Now() - cs->current->runtime_at_last_pick;
+    if (elapsed >= cs->current->remaining_time) {
+      GHOST_DPRINT(1, stderr,
+          "[O1Schedule] cpu=%-2d tid=%-6d  elapsed=%.2fms >= remaining=%.2fms -> preempt_curr=true",
+          cpu.id(), cs->current->gtid.tid(),
+          absl::ToDoubleMilliseconds(elapsed),
+          absl::ToDoubleMilliseconds(cs->current->remaining_time));
+      cs->preempt_curr = true;
+    }
+  }
+
   if (cs->preempt_curr) {
     O1Task* prev = cs->current;
     if (prev) {
