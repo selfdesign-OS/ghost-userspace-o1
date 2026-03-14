@@ -82,7 +82,7 @@ TEST_F(O1Test, MultipleShortTasksCompleteWithoutPreemption) {
   constexpr absl::Duration kTaskDuration = absl::Milliseconds(1);
   constexpr absl::Duration kMaxAllowedWallTime = absl::Milliseconds(100);
   // elapsed가 작업시간(1ms)의 5배 이상이면 wall time 오류 의심
-  constexpr absl::Duration kElapsedAnomalyThreshold = kTaskDuration * 5;
+  const absl::Duration kElapsedAnomalyThreshold = kTaskDuration * 5;
 
   std::vector<absl::Duration> elapsed_times(kNumThreads);
   std::vector<std::unique_ptr<GhostThread>> threads;
