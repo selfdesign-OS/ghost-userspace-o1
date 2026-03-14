@@ -37,7 +37,7 @@ bool O1Task::UpdateRemainingTime(bool isOff) {
   absl::Duration before = remaining_time;
   remaining_time -= elapsed;
 
-  GHOST_DPRINT(1, stderr,
+  GHOST_DPRINT(3, stderr,
       "[UpdateRemainingTime] caller=%-11s tid=%-6d  elapsed=%6.3fms  %.2fms -> %.2fms%s",
       isOff ? "TaskOffCpu" : "CpuTick",
       gtid.tid(),
@@ -56,7 +56,7 @@ bool O1Task::UpdateRemainingTime(bool isOff) {
 }
 
 void O1Scheduler::DumpAllTasks() {
-  GHOST_DPRINT(1, stderr, "[DumpAllTasks]");
+  GHOST_DPRINT(2, stderr, "[DumpAllTasks]");
   fprintf(stderr, "task        state   cpu\n");
   allocator()->ForEachTask([](Gtid gtid, const O1Task* task) {
     absl::FPrintF(stderr, "%-12s%-8d%-8d%c%c\n", gtid.describe(),
@@ -67,7 +67,7 @@ void O1Scheduler::DumpAllTasks() {
 }
 
 void O1Scheduler::DumpState(const Cpu& cpu, int flags) {
-  GHOST_DPRINT(1, stderr, "[DumpState] cpu=%d", cpu.id());
+  GHOST_DPRINT(2, stderr, "[DumpState] cpu=%d", cpu.id());
   if (flags & Scheduler::kDumpAllTasks) {
     DumpAllTasks();
   }
@@ -123,14 +123,14 @@ Cpu O1Scheduler::AssignCpu(O1Task* task) {
     next = begin;
   }
   Cpu assigned = next++;
-  GHOST_DPRINT(1, stderr, "[AssignCpu] tid=%-6d  -> cpu=%d  remaining=%.2fms",
+  GHOST_DPRINT(2, stderr, "[AssignCpu] tid=%-6d  -> cpu=%d  remaining=%.2fms",
       task->gtid.tid(), assigned.id(),
       absl::ToDoubleMilliseconds(task->remaining_time));
   return assigned;
 }
 
 void O1Scheduler::Migrate(O1Task* task, Cpu cpu, BarrierToken seqnum) {
-  GHOST_DPRINT(1, stderr, "[Migrate] tid=%-6d  -> cpu=%d  remaining=%.2fms",
+  GHOST_DPRINT(2, stderr, "[Migrate] tid=%-6d  -> cpu=%d  remaining=%.2fms",
       task->gtid.tid(), cpu.id(),
       absl::ToDoubleMilliseconds(task->remaining_time));
   CHECK_EQ(task->run_state, O1TaskState::kRunnable);
@@ -324,7 +324,7 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
   cs->run_queue.GetMu_().AssertHeld();
   if (cs->current) {
     if (cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/false)) {
-      GHOST_DPRINT(1, stderr,
+      GHOST_DPRINT(2, stderr,
           "[CheckPreemptTick] cpu=%-2d tid=%-6d  remaining=%.2fms -> preempt_curr=true",
           cpu.id(), cs->current->gtid.tid(),
           absl::ToDoubleMilliseconds(cs->current->remaining_time));
@@ -336,7 +336,7 @@ void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
 
 void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
                                bool from_switchto) {
-  GHOST_DPRINT(1, stderr, "[TaskOffCpu] cpu=%-2d tid=%-6d  remaining=%.2fms  -> %s",
+  GHOST_DPRINT(2, stderr, "[TaskOffCpu] cpu=%-2d tid=%-6d  remaining=%.2fms  -> %s",
       task->cpu, task->gtid.tid(),
       absl::ToDoubleMilliseconds(task->remaining_time),
       blocked ? "kBlocked" : "kRunnable");
@@ -369,7 +369,7 @@ void O1Scheduler::TaskOnCpu(O1Task* task, Cpu cpu) {
   task->preempted = false;
   task->prio_boost = false;
 
-  GHOST_DPRINT(1, stderr, "[TaskOnCpu] cpu=%-2d tid=%-6d  remaining=%.2fms",
+  GHOST_DPRINT(2, stderr, "[TaskOnCpu] cpu=%-2d tid=%-6d  remaining=%.2fms",
       cpu.id(), task->gtid.tid(),
       absl::ToDoubleMilliseconds(task->remaining_time));
 }
@@ -384,7 +384,7 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
   if (cs->current && !cs->preempt_curr) {
     absl::Duration elapsed = absl::Now() - cs->current->runtime_at_last_pick;
     if (elapsed >= cs->current->remaining_time) {
-      GHOST_DPRINT(1, stderr,
+      GHOST_DPRINT(2, stderr,
           "[O1Schedule] cpu=%-2d tid=%-6d  elapsed=%.2fms >= remaining=%.2fms -> preempt_curr=true",
           cpu.id(), cs->current->gtid.tid(),
           absl::ToDoubleMilliseconds(elapsed),
@@ -396,7 +396,7 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
   if (cs->preempt_curr) {
     O1Task* prev = cs->current;
     if (prev) {
-      GHOST_DPRINT(1, stderr,
+      GHOST_DPRINT(2, stderr,
           "[O1Schedule] cpu=%-2d  PREEMPT tid=%-6d  remaining=%.2fms -> re-enqueue",
           cpu.id(), prev->gtid.tid(),
           absl::ToDoubleMilliseconds(prev->remaining_time));
@@ -450,7 +450,7 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
       cs->run_queue.Enqueue(next);
     }
   } else {
-    GHOST_DPRINT(1, stderr, "[O1Schedule] cpu=%-2d  IDLE", cpu.id());
+    GHOST_DPRINT(3, stderr, "[O1Schedule] cpu=%-2d  IDLE", cpu.id());
     int flags = 0;
     if (prio_boost && (cs->current || !cs->run_queue.Empty())) {
       flags = RTLA_ON_IDLE;
@@ -487,7 +487,7 @@ void O1Rq::Enqueue(O1Task* task) {
       aq_.push_front(task);
     else
       aq_.push_back(task);
-    GHOST_DPRINT(1, stderr,
+    GHOST_DPRINT(2, stderr,
         "[Enqueue -> active ] cpu=%-2d tid=%-6d  remaining=%.2fms  prio=%-5s  aq_size=%zu",
         task->cpu, task->gtid.tid(),
         absl::ToDoubleMilliseconds(task->remaining_time),
@@ -546,7 +546,7 @@ O1Task* O1Rq::Dequeue() {
   absl::MutexLock lock(&mu_);
   if (aq_.empty()) {
     if (eq_.empty()) {
-      GHOST_DPRINT(1, stderr, "[Dequeue] both queues empty -> idle");
+      GHOST_DPRINT(3, stderr, "[Dequeue] both queues empty -> idle");
       return nullptr;
     } else {
       Swap();
@@ -557,7 +557,7 @@ O1Task* O1Rq::Dequeue() {
   CHECK(task->queued());
   task->run_state = O1TaskState::kRunnable;
   aq_.pop_front();
-  GHOST_DPRINT(1, stderr,
+  GHOST_DPRINT(2, stderr,
       "[Dequeue] cpu=%-2d tid=%-6d  remaining=%.2fms  aq_size=%zu",
       task->cpu, task->gtid.tid(),
       absl::ToDoubleMilliseconds(task->remaining_time),
