@@ -260,7 +260,7 @@ void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
       "[TaskPreempted] cpu=%-2d tid=%-6d  remaining=%.2fms  total_preemptions=%-8lld  *** kernel preempted ***",
       task->cpu, task->gtid.tid(),
       absl::ToDoubleMilliseconds(task->remaining_time),
-      count);
+      static_cast<long long>(count));
   const ghost_msg_payload_task_preempt* payload =
       static_cast<const ghost_msg_payload_task_preempt*>(msg.payload());
 

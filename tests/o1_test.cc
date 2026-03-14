@@ -134,7 +134,7 @@ TEST_F(O1Test, MultipleShortTasksCompleteWithoutPreemption) {
   int64_t total_preemptions = uap_->Rpc(O1Scheduler::kCountPreemptions);
   fprintf(stderr,
       "[Preemption Count] total=%lld  per_thread_avg=%.0f\n",
-      total_preemptions,
+      static_cast<long long>(total_preemptions),
       static_cast<double>(total_preemptions) / kNumThreads);
 }
 
