@@ -170,10 +170,9 @@ TEST_F(O1Test, CpuTickIntervalVerification) {
   });
   t.Join();
 
-  int num_tasks;
-  do {
-    num_tasks = uap_->Rpc(O1Scheduler::kCountAllTasks);
-  } while (num_tasks > 0);
+  // tick 통계는 태스크 정리와 무관하므로 do-while 대신
+  // MSG_TASK_DEAD 처리를 위한 짧은 sleep으로 대체한다.
+  absl::SleepFor(absl::Milliseconds(50));
 
   // CPU 0의 tick 통계 수집
   int64_t tick_count = uap_->Rpc(O1Scheduler::kTickCount);
