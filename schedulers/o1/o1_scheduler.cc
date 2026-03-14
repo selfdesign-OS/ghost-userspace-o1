@@ -293,9 +293,6 @@ void O1Scheduler::CpuTick(const Message& msg) {
   absl::MutexLock lock(&cs->run_queue.GetMu_());
   cs->run_queue.GetMu_().AssertHeld(); // lock 잡았는지 확인
 GHOST_DPRINT(1, stderr,
-          "[CpuTick] cpu=%-2d tid=%-6d  remaining=%.2fms",
-          cpu.id(), cs->current->gtid.tid(),
-          absl::ToDoubleMilliseconds(cs->current->remaining_time));
   // We do not actually need any logic in CpuTick for preemption. Since
   // CpuTick messages wake up the agent, CfsSchedule will eventually be
   // called, which contains the logic for figuring out if we should run the
