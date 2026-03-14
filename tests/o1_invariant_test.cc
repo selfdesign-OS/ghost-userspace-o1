@@ -48,7 +48,10 @@ class O1InvariantTest : public testing::Test {
  protected:
   static void SetUpTestSuite() {
     Topology* t = MachineTopology();
-    AgentConfig cfg(t, t->all_cpus());
+    // CPU 2,3만 ghost에 할당. 나머지 CPU는 OS/VM이 계속 사용 가능하므로
+    // 스케줄러 버그로 무한루프가 발생해도 VM이 먹통이 되지 않는다.
+    CpuList ghost_cpus = t->ToCpuList(std::vector<int>{2, 3});
+    AgentConfig cfg(t, ghost_cpus);
     uap_ = new AgentProcess<FullO1Agent<LocalEnclave>, AgentConfig>(cfg);
   }
 
