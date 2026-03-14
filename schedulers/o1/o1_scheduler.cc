@@ -55,6 +55,28 @@ bool O1Task::UpdateRemainingTime(bool isOff) {
   return false;
 }
 
+void O1Scheduler::CheckInvariants(const Cpu& cpu) const {
+  const CpuState* cs = &cpu_states_[cpu.id()];
+
+  // INV-1: cs->current가 non-null이면 반드시 kOnCpu 상태여야 한다.
+  // 위반 시: O1Schedule에서 TaskOffCpu를 직접 호출해 cs->current가 nullptr인데
+  // run_state가 kQueued로 바뀐 태스크가 여전히 cs->current에 남아있는 경우 등.
+  DCHECK(cs->current == nullptr || cs->current->oncpu())
+      << "[INV-1] cs->current is non-null but run_state != kOnCpu"
+      << "  tid=" << (cs->current ? cs->current->gtid.tid() : -1)
+      << "  state=" << (cs->current ? static_cast<int>(cs->current->run_state) : -1)
+      << "  cpu=" << cpu.id();
+
+  // INV-2: cs->current 태스크는 반드시 이 CPU에 배정돼 있어야 한다.
+  if (cs->current != nullptr) {
+    DCHECK_EQ(cs->current->cpu, cpu.id())
+        << "[INV-2] cs->current->cpu mismatch"
+        << "  task->cpu=" << cs->current->cpu
+        << "  expected_cpu=" << cpu.id()
+        << "  tid=" << cs->current->gtid.tid();
+  }
+}
+
 void O1Scheduler::DumpAllTasks() {
   GHOST_DPRINT(2, stderr, "[DumpAllTasks]");
   fprintf(stderr, "task        state   cpu\n");
@@ -340,7 +362,32 @@ void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
       task->cpu, task->gtid.tid(),
       absl::ToDoubleMilliseconds(task->remaining_time),
       blocked ? "kBlocked" : "kRunnable");
+
+  // INV-3: task는 kOnCpu이거나 switchto로 인한 kBlocked여야 한다.
+  // 위반 시: O1Schedule에서 이미 TaskOffCpu를 호출해 상태가 kQueued로 바뀐 뒤
+  // MSG_TASK_PREEMPTED로 다시 TaskOffCpu가 호출되는 이중 호출 버그.
+  DCHECK(task->oncpu() || (from_switchto && task->blocked()))
+      << "[INV-3] TaskOffCpu: invalid task state on entry"
+      << "  run_state=" << task->run_state
+      << "  from_switchto=" << from_switchto
+      << "  tid=" << task->gtid.tid()
+      << "  cpu=" << task->cpu;
+
   CpuState* cs = cpu_state_of(task);
+
+  // INV-5: cs->current는 반드시 task와 같아야 한다.
+  // 위반 케이스 A — cs->current == nullptr:
+  //   O1Schedule의 preempt_curr 분기에서 TaskOffCpu(1차)를 호출해
+  //   cs->current=nullptr로 만든 뒤, MSG_TASK_PREEMPTED 처리 시 2차 진입.
+  // 위반 케이스 B — cs->current == other_task:
+  //   commit(other_task) 후 TaskOnCpu(other_task)가 cs->current를 갱신했는데
+  //   이전 태스크의 MSG_TASK_PREEMPTED가 아직 처리되지 않은 상태.
+  DCHECK_EQ(cs->current, task)
+      << "[INV-5] TaskOffCpu: cs->current != task"
+      << "  cs->current="
+      << (cs->current ? cs->current->gtid.tid() : -1)
+      << "  task=" << task->gtid.tid()
+      << "  task.state=" << task->run_state;
   
   //time slice update
   if (cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/true)) {
@@ -361,6 +408,16 @@ void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
 
 void O1Scheduler::TaskOnCpu(O1Task* task, Cpu cpu) {
   CpuState* cs = cpu_state(cpu);
+
+  // INV-4: commit 직전 태스크는 kRunnable 또는 kQueued 상태여야 한다.
+  // 위반 시: 이미 kOnCpu인 태스크를 중복으로 스케줄하거나
+  // kBlocked 상태 태스크를 잘못 커밋하는 경우.
+  DCHECK(task->_runnable() || task->queued())
+      << "[INV-4] TaskOnCpu: unexpected task state before commit"
+      << "  run_state=" << task->run_state
+      << "  tid=" << task->gtid.tid()
+      << "  cpu=" << cpu.id();
+
   cs->current = task;
 
   task->run_state = O1TaskState::kOnCpu;
@@ -469,6 +526,10 @@ void O1Scheduler::Schedule(const Cpu& cpu, const StatusWord& agent_sw) {
       DispatchMessage(msg);
       Consume(cs->channel.get(), msg);
     }
+
+  // 메시지 처리 후 불변식 검사.
+  // CpuTick=ON 환경에서 버그가 있는 경우 여기서 INV-1/INV-2 위반이 감지된다.
+  CheckInvariants(cpu);
 
   // O1Schedule(cpu, agent_barrier, agent_sw.boosted_priority());
   O1Schedule(cpu, agent_barrier, false);

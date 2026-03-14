@@ -171,6 +171,15 @@ class O1Scheduler : public BasicDispatchScheduler<O1Task> {
   void CpuTick(const Message& msg) final;
 
  private:
+  // 핵심 불변식 검사 (DCHECK 기반, 디버그 빌드에서만 abort).
+  //
+  // INV-1: cs->current != nullptr → cs->current->run_state == kOnCpu
+  // INV-2: cs->current != nullptr → cs->current->cpu == cpu.id()
+  // INV-3: TaskOffCpu 진입 시 task->oncpu() == true (from_switchto 제외)
+  // INV-4: TaskOnCpu 진입 시 task->_runnable() || task->queued()
+  // INV-5: TaskOffCpu 진입 시 cs->current == task
+  void CheckInvariants(const Cpu& cpu) const;
+
   // Checks if we should preempt the current task. If so, sets preempt_curr_.
   // Note: Should be called with this CPU's rq mutex lock held.
   void CheckPreemptTick(const Cpu& cpu);
