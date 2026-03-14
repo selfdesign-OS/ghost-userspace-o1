@@ -524,7 +524,6 @@ cc_test(
     deps = [
         ":o1_scheduler",
         "@com_google_googletest//:gtest",
-        "@com_google_googletest//:gmock",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
     ],
