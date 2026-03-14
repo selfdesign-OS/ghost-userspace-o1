@@ -529,6 +529,21 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "o1_invariant_test",
+    size = "small",
+    srcs = [
+        "tests/o1_invariant_test.cc",
+    ],
+    copts = compiler_flags,
+    deps = [
+        ":o1_scheduler",
+        "@com_google_googletest//:gtest",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
+    ],
+)
+
 cc_binary(
     name = "logging_bench",
     srcs = [
