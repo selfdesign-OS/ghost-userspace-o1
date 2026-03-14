@@ -255,9 +255,12 @@ void O1Scheduler::TaskBlocked(O1Task* task, const Message& msg) {
 }
 
 void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
-  GHOST_DPRINT(1, stderr, "[TaskPreempted] cpu=%-2d tid=%-6d  remaining=%.2fms  *** kernel preempted ***",
+  int64_t count = preemption_count_.fetch_add(1, std::memory_order_relaxed) + 1;
+  GHOST_DPRINT(1, stderr,
+      "[TaskPreempted] cpu=%-2d tid=%-6d  remaining=%.2fms  total_preemptions=%-8lld  *** kernel preempted ***",
       task->cpu, task->gtid.tid(),
-      absl::ToDoubleMilliseconds(task->remaining_time));
+      absl::ToDoubleMilliseconds(task->remaining_time),
+      count);
   const ghost_msg_payload_task_preempt* payload =
       static_cast<const ghost_msg_payload_task_preempt*>(msg.payload());
 

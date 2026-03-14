@@ -124,6 +124,7 @@ class O1Scheduler : public BasicDispatchScheduler<O1Task> {
 
   void DumpState(const Cpu& cpu, int flags) final;
   std::atomic<bool> debug_runqueue_ = false;
+  std::atomic<int64_t> preemption_count_ = 0;
 
   int CountAllTasks() {
     int num_tasks = 0;
@@ -134,8 +135,13 @@ class O1Scheduler : public BasicDispatchScheduler<O1Task> {
     return num_tasks;
   }
 
+  int64_t CountPreemptions() {
+    return preemption_count_.load(std::memory_order_relaxed);
+  }
+
   static constexpr int kDebugRunqueue = 1;
   static constexpr int kCountAllTasks = 2;
+  static constexpr int kCountPreemptions = 3;
 
  protected:
   void TaskNew(O1Task* task, const Message& msg) final;
@@ -221,6 +227,9 @@ class FullO1Agent : public FullAgent<EnclaveType> {
         return;
       case O1Scheduler::kCountAllTasks:
         response.response_code = scheduler_->CountAllTasks();
+        return;
+      case O1Scheduler::kCountPreemptions:
+        response.response_code = scheduler_->CountPreemptions();
         return;
       default:
         response.response_code = -1;
