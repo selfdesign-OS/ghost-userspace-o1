@@ -524,6 +524,8 @@ cc_test(
     deps = [
         ":o1_scheduler",
         "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gmock",
+        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
     ],
 )
@@ -761,6 +763,7 @@ cc_library(
     copts = compiler_flags,
     deps = [
         ":agent",
+        "@com_google_absl//absl/flags:flag",
     ],
 )
 

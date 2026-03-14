@@ -25,6 +25,11 @@
 ABSL_FLAG(std::string, ghost_cpus, "", "ghost enclave에 사용할 CPU 목록 (예: 2-3). "
                                        "비어있으면 전체 CPU 사용.");
 
+// [가설 3.1.2 검증] CpuTick에 의한 선점 여부 확인
+// --disable_cpu_tick=true 로 실행하면 CpuTick 구독을 끄고 테스트한다.
+// 이 플래그는 o1_scheduler.cc의 FLAGS_disable_cpu_tick과 동일한 플래그다.
+ABSL_DECLARE_FLAG(bool, disable_cpu_tick);
+
 namespace ghost {
 namespace {
 
@@ -92,8 +97,12 @@ TEST_F(O1Test, MultipleShortTasksCompleteWithoutPreemption) {
   constexpr absl::Duration kMaxAllowedWallTime = absl::Milliseconds(100);
 
   std::string cpus_flag = absl::GetFlag(FLAGS_ghost_cpus);
-  fprintf(stderr, "[Hypothesis 3.1.1] ghost_cpus=%s\n",
-          cpus_flag.empty() ? "all (no isolation)" : cpus_flag.c_str());
+  bool tick_disabled = absl::GetFlag(FLAGS_disable_cpu_tick);
+  fprintf(stderr,
+          "[Hypothesis 3.1.1] ghost_cpus=%s\n"
+          "[Hypothesis 3.1.2] disable_cpu_tick=%s\n",
+          cpus_flag.empty() ? "all (no isolation)" : cpus_flag.c_str(),
+          tick_disabled ? "true (CpuTick OFF)" : "false (CpuTick ON)");
 
   std::vector<absl::Duration> elapsed_times(kNumThreads);
   std::vector<std::unique_ptr<GhostThread>> threads;
@@ -125,13 +134,16 @@ TEST_F(O1Test, MultipleShortTasksCompleteWithoutPreemption) {
     EXPECT_THAT(num_tasks, Ge(0));
   } while (num_tasks > 0);
 
-  // 선점 횟수 출력 - CPU 고립 전후 비교용
+  // 선점 횟수 출력 - 가설 3.1.1 / 3.1.2 비교용
   int64_t total_preemptions = uap_->Rpc(O1Scheduler::kCountPreemptions);
   fprintf(stderr,
-      "[Hypothesis 3.1.1] preemption_total=%lld  per_thread_avg=%.0f\n"
-      "  -> 고립 전후 비교: 고립 후 횟수가 현저히 줄면 CFS 선점이 원인\n",
+      "[Result] preemption_total=%lld  per_thread_avg=%.0f\n"
+      "  [3.1.1] ghost_cpus=%s  -> 고립 후 횟수 감소 시 CFS 선점이 원인\n"
+      "  [3.1.2] CpuTick=%s     -> OFF 후 횟수 감소 시 CpuTick 선점이 원인\n",
       static_cast<long long>(total_preemptions),
-      static_cast<double>(total_preemptions) / kNumThreads);
+      static_cast<double>(total_preemptions) / kNumThreads,
+      cpus_flag.empty() ? "all (no isolation)" : cpus_flag.c_str(),
+      tick_disabled ? "OFF" : "ON");
 }
 
 }  // namespace

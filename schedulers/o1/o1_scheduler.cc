@@ -8,6 +8,11 @@
 
 #include <memory>
 
+#include "absl/flags/flag.h"
+
+ABSL_FLAG(bool, disable_cpu_tick, false,
+          "CpuTick 메시지 구독을 비활성화한다 (가설 3.1.2 검증용).");
+
 namespace ghost {
 
 O1Scheduler::O1Scheduler(Enclave* enclave, CpuList cpulist,
@@ -99,7 +104,12 @@ void O1Scheduler::EnclaveReady() {
   // channel/agent for the front CPU in the enclave) can get CpuTick messages
   // for another CPU in the enclave while this function is trying to associate
   // each agent to its corresponding channel.
-  enclave()->SetDeliverTicks(true);
+  bool deliver_ticks = !absl::GetFlag(FLAGS_disable_cpu_tick);
+  enclave()->SetDeliverTicks(deliver_ticks);
+  GHOST_DPRINT(1, stderr,
+               "[EnclaveReady] CpuTick=%s (disable_cpu_tick=%s)",
+               deliver_ticks ? "ON" : "OFF",
+               absl::GetFlag(FLAGS_disable_cpu_tick) ? "true" : "false");
 }
 
 // Implicitly thread-safe because it is only called from one agent associated
