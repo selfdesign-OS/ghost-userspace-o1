@@ -19,6 +19,12 @@
 #include "lib/ghost.h"
 #include "schedulers/o1/o1_scheduler.h"
 
+// [가설 3.1.1 검증] CFS 태스크에 의한 선점 여부 확인
+// 커널 부팅 시 isolcpus=2-3 등으로 고립시킨 CPU를 지정한다.
+// 기본값은 all_cpus (고립 없는 일반 테스트)
+ABSL_FLAG(std::string, ghost_cpus, "", "ghost enclave에 사용할 CPU 목록 (예: 2-3). "
+                                       "비어있으면 전체 CPU 사용.");
+
 namespace ghost {
 namespace {
 
@@ -28,7 +34,14 @@ class O1Test : public testing::Test {
  protected:
   static void SetUpTestSuite() {
     Topology* t = MachineTopology();
-    AgentConfig cfg(t, t->all_cpus());
+
+    std::string cpus_flag = absl::GetFlag(FLAGS_ghost_cpus);
+    CpuList ghost_cpus = cpus_flag.empty()
+                             ? t->all_cpus()
+                             : t->ParseCpuStr(cpus_flag);
+    CHECK(!ghost_cpus.Empty()) << "ghost_cpus가 비어있습니다: " << cpus_flag;
+
+    AgentConfig cfg(t, ghost_cpus);
     uap_ = new AgentProcess<FullO1Agent<LocalEnclave>, AgentConfig>(cfg);
   }
 
@@ -43,12 +56,7 @@ class O1Test : public testing::Test {
 AgentProcess<FullO1Agent<LocalEnclave>, AgentConfig>* O1Test::uap_;
 
 // 단일 스레드가 1ms 작업을 선점 없이 완료하는지 확인.
-//
-// time slice = 10ms, 작업 시간 = 1ms 이므로 time slice 만료 전에 작업이
-// 끝나야 한다. 선점이 발생하면 expired queue로 이동 후 재스케줄링되어
-// 경과 시간이 크게 늘어난다.
 TEST_F(O1Test, ShortTaskCompletesWithoutPreemption) {
-  // time slice(10ms)보다 충분히 여유 있는 완료 허용 시간
   constexpr absl::Duration kMaxAllowedWallTime = absl::Milliseconds(50);
 
   absl::Duration elapsed;
@@ -72,17 +80,20 @@ TEST_F(O1Test, ShortTaskCompletesWithoutPreemption) {
   } while (num_tasks > 0);
 }
 
-// 여러 스레드가 각각 1ms 작업을 선점 없이 완료하는지 확인.
+// [가설 3.1.1 검증] CFS 선점 여부 확인
+// --ghost_cpus 없이 실행: CFS 태스크가 ghost 코어에 들어올 수 있는 환경
+// --ghost_cpus=2-3 실행:  커널 isolcpus로 고립된 코어만 사용 → CFS 간섭 없음
 //
-// [가설 검증]
-// - 3.2.1: elapsed 이상값 감지 → wall time 계산 오류 여부
-// - 선점 횟수 측정 → 문제 정의(30000회)의 재현성 확인
+// 두 결과의 선점 횟수를 비교하여 CFS 태스크 간섭 여부를 판단한다.
+//   - 고립 후 선점 횟수가 현저히 줄면 → 가설 3.1.1 (CFS 선점) 원인 확정
+//   - 고립 후에도 선점 횟수 동일    → 가설 3.1.1 배제, 다음 가설로 이동
 TEST_F(O1Test, MultipleShortTasksCompleteWithoutPreemption) {
   constexpr int kNumThreads = 10;
-  constexpr absl::Duration kTaskDuration = absl::Milliseconds(1);
   constexpr absl::Duration kMaxAllowedWallTime = absl::Milliseconds(100);
-  // elapsed가 작업시간(1ms)의 5배 이상이면 wall time 오류 의심
-  const absl::Duration kElapsedAnomalyThreshold = kTaskDuration * 5;
+
+  std::string cpus_flag = absl::GetFlag(FLAGS_ghost_cpus);
+  fprintf(stderr, "[Hypothesis 3.1.1] ghost_cpus=%s\n",
+          cpus_flag.empty() ? "all (no isolation)" : cpus_flag.c_str());
 
   std::vector<absl::Duration> elapsed_times(kNumThreads);
   std::vector<std::unique_ptr<GhostThread>> threads;
@@ -91,9 +102,9 @@ TEST_F(O1Test, MultipleShortTasksCompleteWithoutPreemption) {
   for (int i = 0; i < kNumThreads; i++) {
     threads.emplace_back(
         std::make_unique<GhostThread>(GhostThread::KernelScheduler::kGhost,
-                                      [i, &elapsed_times, kTaskDuration] {
+                                      [i, &elapsed_times] {
                                         absl::Time start = absl::Now();
-                                        SpinFor(kTaskDuration);
+                                        SpinFor(absl::Milliseconds(1));
                                         elapsed_times[i] = absl::Now() - start;
                                       }));
   }
@@ -102,27 +113,11 @@ TEST_F(O1Test, MultipleShortTasksCompleteWithoutPreemption) {
     t->Join();
   }
 
-  // [가설 3.2.1] elapsed 이상값 확인
-  // elapsed가 작업시간(1ms)의 5배(5ms) 이상이면 wall time에
-  // 에이전트 실행시간/컨텍스트 스위치 오버헤드가 포함된 것
-  int anomaly_count = 0;
   for (int i = 0; i < kNumThreads; i++) {
-    if (elapsed_times[i] > kElapsedAnomalyThreshold) {
-      ++anomaly_count;
-      fprintf(stderr,
-          "[Hypothesis 3.2.1] Thread %d elapsed=%.2fms  "
-          ">> threshold=%.2fms  -> wall time anomaly suspected\n",
-          i,
-          absl::ToDoubleMilliseconds(elapsed_times[i]),
-          absl::ToDoubleMilliseconds(kElapsedAnomalyThreshold));
-    }
     EXPECT_LE(elapsed_times[i], kMaxAllowedWallTime)
         << "Thread " << i << " took "
         << absl::ToDoubleMilliseconds(elapsed_times[i]) << "ms";
   }
-  fprintf(stderr,
-      "[Hypothesis 3.2.1] elapsed anomaly: %d / %d threads\n",
-      anomaly_count, kNumThreads);
 
   int num_tasks;
   do {
@@ -130,10 +125,11 @@ TEST_F(O1Test, MultipleShortTasksCompleteWithoutPreemption) {
     EXPECT_THAT(num_tasks, Ge(0));
   } while (num_tasks > 0);
 
-  // [선점 횟수 측정] 문제 정의(10개 스레드 총 308594회)와 비교
+  // 선점 횟수 출력 - CPU 고립 전후 비교용
   int64_t total_preemptions = uap_->Rpc(O1Scheduler::kCountPreemptions);
   fprintf(stderr,
-      "[Preemption Count] total=%lld  per_thread_avg=%.0f\n",
+      "[Hypothesis 3.1.1] preemption_total=%lld  per_thread_avg=%.0f\n"
+      "  -> 고립 전후 비교: 고립 후 횟수가 현저히 줄면 CFS 선점이 원인\n",
       static_cast<long long>(total_preemptions),
       static_cast<double>(total_preemptions) / kNumThreads);
 }
