@@ -529,6 +529,17 @@ cc_test(
     ],
 )
 
+cc_binary(
+    name = "logging_bench",
+    srcs = [
+        "tests/logging_bench.cc",
+    ],
+    copts = compiler_flags,
+    deps = [
+        "@com_google_absl//absl/time",
+    ],
+)
+
 cc_test(
     name = "biff_test",
     size = "small",
