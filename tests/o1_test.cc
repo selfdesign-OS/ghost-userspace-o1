@@ -146,6 +146,74 @@ TEST_F(O1Test, MultipleShortTasksCompleteWithoutPreemption) {
       tick_disabled ? "OFF" : "ON");
 }
 
+// CpuTick 실제 수신 간격 검증
+//
+// HZ=250 커널에서 CpuTick은 4ms(4,000,000ns) 주기로 와야 한다.
+// 이 테스트는 200ms 동안 ghost 태스크를 돌려 CpuTick을 수집한 뒤
+// CPU 0의 tick 간격 통계(avg/min/max)를 출력하고 예상 범위를 확인한다.
+//
+// 실행 방법 (CpuTick ON 상태여야 함):
+//   sudo bazel-bin/o1_test --disable_cpu_tick=false \
+//       --gtest_filter=O1Test.CpuTickIntervalVerification
+TEST_F(O1Test, CpuTickIntervalVerification) {
+  if (absl::GetFlag(FLAGS_disable_cpu_tick)) {
+    GTEST_SKIP() << "CpuTick이 비활성화되어 있습니다. "
+                    "--disable_cpu_tick=false 로 실행하세요.";
+  }
+
+  // 200ms 동안 ghost 태스크를 spin시켜 충분한 tick을 수집한다.
+  // HZ=250이면 200ms 동안 약 50개의 tick이 CPU 0에 도달해야 한다.
+  constexpr absl::Duration kObservationTime = absl::Milliseconds(200);
+
+  GhostThread t(GhostThread::KernelScheduler::kGhost, [&] {
+    SpinFor(kObservationTime);
+  });
+  t.Join();
+
+  int num_tasks;
+  do {
+    num_tasks = uap_->Rpc(O1Scheduler::kCountAllTasks);
+  } while (num_tasks > 0);
+
+  // CPU 0의 tick 통계 수집
+  int64_t tick_count = uap_->Rpc(O1Scheduler::kTickCount);
+  int64_t avg_ns     = uap_->Rpc(O1Scheduler::kTickAvgNs);
+  int64_t min_ns     = uap_->Rpc(O1Scheduler::kTickMinNs);
+  int64_t max_ns     = uap_->Rpc(O1Scheduler::kTickMaxNs);
+
+  // HZ=250 → 4ms = 4,000,000ns 기준, ±50% 허용 범위로 검증
+  // (시스템 부하나 jitter를 감안한 넓은 범위)
+  constexpr int64_t kExpectedNs  = 4'000'000;
+  constexpr int64_t kToleranceNs = 2'000'000;  // ±2ms
+
+  fprintf(stderr,
+      "\n[CpuTick Interval Verification]\n"
+      "  관측 시간       : %lldms\n"
+      "  수신 tick 수    : %lld\n"
+      "  예상 tick 수    : ~%lld  (HZ=250, 4ms 주기)\n"
+      "  평균 간격       : %.3fms  (예상: 4.000ms)\n"
+      "  최소 간격       : %.3fms\n"
+      "  최대 간격       : %.3fms\n"
+      "  오차 (avg-예상) : %+.3fms\n",
+      static_cast<long long>(absl::ToInt64Milliseconds(kObservationTime)),
+      static_cast<long long>(tick_count),
+      static_cast<long long>(
+          absl::ToInt64Milliseconds(kObservationTime) / 4),
+      avg_ns / 1e6,
+      min_ns / 1e6,
+      max_ns / 1e6,
+      (avg_ns - kExpectedNs) / 1e6);
+
+  EXPECT_GT(tick_count, 0) << "CpuTick이 한 번도 수신되지 않았습니다.";
+
+  if (tick_count > 1) {
+    EXPECT_NEAR(avg_ns, kExpectedNs, kToleranceNs)
+        << "평균 tick 간격이 예상(4ms)과 크게 다릅니다. "
+        << "실제 커널 HZ를 확인하세요: "
+        << "grep CONFIG_HZ /boot/config-$(uname -r)";
+  }
+}
+
 }  // namespace
 }  // namespace ghost
 

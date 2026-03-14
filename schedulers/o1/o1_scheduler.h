@@ -139,9 +139,25 @@ class O1Scheduler : public BasicDispatchScheduler<O1Task> {
     return preemption_count_.load(std::memory_order_relaxed);
   }
 
-  static constexpr int kDebugRunqueue = 1;
-  static constexpr int kCountAllTasks = 2;
+  // CPU 0의 tick 통계 반환 (테스트에서 검증용)
+  int64_t GetTickCount()  { return cpu_states_[0].tick_stat.count; }
+  int64_t GetTickAvgNs()  {
+    auto& s = cpu_states_[0].tick_stat;
+    return s.count > 1 ? s.sum_ns / (s.count - 1) : 0;
+  }
+  int64_t GetTickMinNs()  {
+    auto& s = cpu_states_[0].tick_stat;
+    return s.min_ns == INT64_MAX ? 0 : s.min_ns;
+  }
+  int64_t GetTickMaxNs()  { return cpu_states_[0].tick_stat.max_ns; }
+
+  static constexpr int kDebugRunqueue   = 1;
+  static constexpr int kCountAllTasks   = 2;
   static constexpr int kCountPreemptions = 3;
+  static constexpr int kTickCount       = 4;  // CPU 0 tick 수신 횟수
+  static constexpr int kTickAvgNs       = 5;  // CPU 0 tick 평균 간격 (ns)
+  static constexpr int kTickMinNs       = 6;  // CPU 0 tick 최소 간격 (ns)
+  static constexpr int kTickMaxNs       = 7;  // CPU 0 tick 최대 간격 (ns)
 
  protected:
   void TaskNew(O1Task* task, const Message& msg) final;
@@ -166,12 +182,22 @@ class O1Scheduler : public BasicDispatchScheduler<O1Task> {
   Cpu AssignCpu(O1Task* task);
   void DumpAllTasks();
 
+  // CpuTick 수신 간격 통계 (CPU별로 독립 관리)
+  struct TickIntervalStat {
+    absl::Time prev_time;
+    int64_t count = 0;           // 수신한 tick 수
+    int64_t sum_ns = 0;          // 간격 합계 (평균 계산용)
+    int64_t min_ns = INT64_MAX;  // 최소 간격
+    int64_t max_ns = 0;          // 최대 간격
+  };
+
   struct CpuState {
     O1Task* current = nullptr;
     std::unique_ptr<Channel> channel = nullptr;
     O1Rq run_queue;
     // Should we keep running the current task.
     bool preempt_curr = false;
+    TickIntervalStat tick_stat;
   } ABSL_CACHELINE_ALIGNED;
 
   inline CpuState* cpu_state(const Cpu& cpu) { return &cpu_states_[cpu.id()]; }
@@ -230,6 +256,18 @@ class FullO1Agent : public FullAgent<EnclaveType> {
         return;
       case O1Scheduler::kCountPreemptions:
         response.response_code = scheduler_->CountPreemptions();
+        return;
+      case O1Scheduler::kTickCount:
+        response.response_code = scheduler_->GetTickCount();
+        return;
+      case O1Scheduler::kTickAvgNs:
+        response.response_code = scheduler_->GetTickAvgNs();
+        return;
+      case O1Scheduler::kTickMinNs:
+        response.response_code = scheduler_->GetTickMinNs();
+        return;
+      case O1Scheduler::kTickMaxNs:
+        response.response_code = scheduler_->GetTickMaxNs();
         return;
       default:
         response.response_code = -1;

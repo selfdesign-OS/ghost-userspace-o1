@@ -301,12 +301,20 @@ void O1Scheduler::CpuTick(const Message& msg) {
   CpuState* cs = cpu_state(cpu);
 
   absl::MutexLock lock(&cs->run_queue.GetMu_());
-  cs->run_queue.GetMu_().AssertHeld(); // lock 잡았는지 확인
-  // We do not actually need any logic in CpuTick for preemption. Since
-  // CpuTick messages wake up the agent, CfsSchedule will eventually be
-  // called, which contains the logic for figuring out if we should run the
-  // task that was running before we got preempted the agent or if we should
-  // reach into our rb tree.
+  cs->run_queue.GetMu_().AssertHeld();
+
+  // CpuTick 수신 간격 측정
+  absl::Time now = absl::Now();
+  TickIntervalStat& stat = cs->tick_stat;
+  if (stat.count > 0) {
+    int64_t interval_ns = absl::ToInt64Nanoseconds(now - stat.prev_time);
+    stat.sum_ns += interval_ns;
+    if (interval_ns < stat.min_ns) stat.min_ns = interval_ns;
+    if (interval_ns > stat.max_ns) stat.max_ns = interval_ns;
+  }
+  stat.prev_time = now;
+  stat.count++;
+
   CheckPreemptTick(cpu);
 }
 
