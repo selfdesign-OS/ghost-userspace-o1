@@ -99,7 +99,7 @@ void O1Scheduler::EnclaveReady() {
   // channel/agent for the front CPU in the enclave) can get CpuTick messages
   // for another CPU in the enclave while this function is trying to associate
   // each agent to its corresponding channel.
-  enclave()->SetDeliverTicks(false);
+  enclave()->SetDeliverTicks(true);
 }
 
 // Implicitly thread-safe because it is only called from one agent associated
@@ -293,23 +293,11 @@ void O1Scheduler::CpuTick(const Message& msg) {
   const ghost_msg_payload_cpu_tick* payload =
       static_cast<const ghost_msg_payload_cpu_tick*>(msg.payload());
   Cpu cpu = topology()->cpu(payload->cpu);
-  CpuState* cs = cpu_state(cpu);
-
-  absl::MutexLock lock(&cs->run_queue.GetMu_());
-  cs->run_queue.GetMu_().AssertHeld(); // lock 잡았는지 확인
-
-  // We do not actually need any logic in CpuTick for preemption. Since
-  // CpuTick messages wake up the agent, CfsSchedule will eventually be
-  // called, which contains the logic for figuring out if we should run the
-  // task that was running before we got preempted the agent or if we should
-  // reach into our rb tree.
   CheckPreemptTick(cpu);
 }
 
-void O1Scheduler::CheckPreemptTick(const Cpu& cpu)
-  ABSL_NO_THREAD_SAFETY_ANALYSIS {
+void O1Scheduler::CheckPreemptTick(const Cpu& cpu) {
   CpuState* cs = cpu_state(cpu);
-  cs->run_queue.GetMu_().AssertHeld();
   if (cs->current) {
     if (cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/false)) {
       GHOST_DPRINT(1, stderr,

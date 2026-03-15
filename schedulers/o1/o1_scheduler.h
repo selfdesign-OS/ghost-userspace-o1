@@ -150,7 +150,6 @@ class O1Scheduler : public BasicDispatchScheduler<O1Task> {
 
  private:
   // Checks if we should preempt the current task. If so, sets preempt_curr_.
-  // Note: Should be called with this CPU's rq mutex lock held.
   void CheckPreemptTick(const Cpu& cpu);
   void O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
                     bool prio_boosted);
