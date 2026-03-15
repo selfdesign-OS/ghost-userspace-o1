@@ -99,7 +99,7 @@ void O1Scheduler::EnclaveReady() {
   // channel/agent for the front CPU in the enclave) can get CpuTick messages
   // for another CPU in the enclave while this function is trying to associate
   // each agent to its corresponding channel.
-  enclave()->SetDeliverTicks(true);
+  enclave()->SetDeliverTicks(false);
 }
 
 // Implicitly thread-safe because it is only called from one agent associated
