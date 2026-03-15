@@ -16,7 +16,7 @@
 //   7. 반복 블로킹   — 여러 번 sleep/wake 반복
 
 #include <sched.h>
-#include <atomic>
+#include <sstream>
 #include <vector>
 
 #include "gmock/gmock.h"
@@ -28,6 +28,9 @@
 #include "lib/ghost.h"
 #include "schedulers/o1/o1_scheduler.h"
 
+ABSL_FLAG(std::string, ghost_cpus, "",
+          "Ghost CPU ID 목록, 쉼표 구분 (예: '3,4'). 미지정 시 all CPUs.");
+
 namespace ghost {
 namespace {
 
@@ -36,6 +39,16 @@ using ::testing::Ge;
 // ─────────────────────────────────────────────────────────────
 // 공통 헬퍼
 // ─────────────────────────────────────────────────────────────
+
+static CpuList GetGhostCpus(Topology* t) {
+  std::string s = absl::GetFlag(FLAGS_ghost_cpus);
+  if (s.empty()) return t->all_cpus();
+  std::vector<int> ids;
+  std::istringstream ss(s);
+  std::string token;
+  while (std::getline(ss, token, ',')) ids.push_back(std::stoi(token));
+  return t->ToCpuList(ids);
+}
 
 // 모든 ghost 태스크가 완료(kCountAllTasks == 0)될 때까지 대기.
 // timeout 초과 시 테스트 실패.
@@ -61,7 +74,7 @@ class O1Test : public testing::Test {
  protected:
   static void SetUpTestSuite() {
     Topology* t = MachineTopology();
-    AgentConfig cfg(t, t->all_cpus());
+    AgentConfig cfg(t, GetGhostCpus(t));
     uap_ = new AgentProcess<FullO1Agent<LocalEnclave>, AgentConfig>(cfg);
   }
 

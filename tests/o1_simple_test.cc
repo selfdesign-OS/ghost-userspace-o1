@@ -10,12 +10,16 @@
 // 네이티브 Linux (bare metal) 환경에서 통과 확인 (commit: f30e95f).
 //
 // 목적: time slice 10ms에서 1ms 작업이 선점 없이 완료되는지 검증
+//
+// 실행 예시:
+//   sudo bazel run //tests:o1_simple_test -- --ghost_cpus=3,4
 
-#include <atomic>
+#include <sstream>
 #include <vector>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
@@ -23,16 +27,43 @@
 #include "lib/ghost.h"
 #include "schedulers/o1/o1_scheduler.h"
 
+ABSL_FLAG(std::string, ghost_cpus, "",
+          "Ghost CPU ID 목록, 쉼표 구분 (예: '3,4'). 미지정 시 all CPUs.");
+
 namespace ghost {
 namespace {
 
 using ::testing::Ge;
 
+static CpuList GetGhostCpus(Topology* t) {
+  std::string s = absl::GetFlag(FLAGS_ghost_cpus);
+  if (s.empty()) return t->all_cpus();
+  std::vector<int> ids;
+  std::istringstream ss(s);
+  std::string token;
+  while (std::getline(ss, token, ',')) ids.push_back(std::stoi(token));
+  return t->ToCpuList(ids);
+}
+
+static void WaitForAllTasksDone(
+    AgentProcess<FullO1Agent<LocalEnclave>, AgentConfig>* uap,
+    absl::Duration timeout = absl::Seconds(5)) {
+  absl::Time deadline = absl::Now() + timeout;
+  int num_tasks;
+  do {
+    num_tasks = uap->Rpc(O1Scheduler::kCountAllTasks);
+    ASSERT_GE(num_tasks, 0);
+    ASSERT_LT(absl::Now(), deadline)
+        << num_tasks << "개 태스크가 "
+        << absl::ToDoubleMilliseconds(timeout) << "ms 내에 완료되지 않음";
+  } while (num_tasks > 0);
+}
+
 class O1SimpleTest : public testing::Test {
  protected:
   static void SetUpTestSuite() {
     Topology* t = MachineTopology();
-    AgentConfig cfg(t, t->all_cpus());
+    AgentConfig cfg(t, GetGhostCpus(t));
     uap_ = new AgentProcess<FullO1Agent<LocalEnclave>, AgentConfig>(cfg);
   }
 
@@ -52,7 +83,6 @@ AgentProcess<FullO1Agent<LocalEnclave>, AgentConfig>* O1SimpleTest::uap_;
 // 끝나야 한다. 선점이 발생하면 expired queue로 이동 후 재스케줄링되어
 // 경과 시간이 크게 늘어난다.
 TEST_F(O1SimpleTest, ShortTaskCompletesWithoutPreemption) {
-  // time slice(10ms)보다 충분히 여유 있는 완료 허용 시간
   constexpr absl::Duration kMaxAllowedWallTime = absl::Milliseconds(50);
 
   absl::Duration elapsed;
@@ -69,11 +99,7 @@ TEST_F(O1SimpleTest, ShortTaskCompletesWithoutPreemption) {
       << "Task took " << absl::ToDoubleMilliseconds(elapsed)
       << "ms — possible preemption detected (time slice=10ms, task=1ms)";
 
-  int num_tasks;
-  do {
-    num_tasks = uap_->Rpc(O1Scheduler::kCountAllTasks);
-    EXPECT_THAT(num_tasks, Ge(0));
-  } while (num_tasks > 0);
+  WaitForAllTasksDone(uap_);
 }
 
 // 여러 스레드가 각각 1ms 작업을 선점 없이 완료하는지 확인.
@@ -96,9 +122,7 @@ TEST_F(O1SimpleTest, MultipleShortTasksCompleteWithoutPreemption) {
                                       }));
   }
 
-  for (auto& t : threads) {
-    t->Join();
-  }
+  for (auto& t : threads) t->Join();
 
   for (int i = 0; i < kNumThreads; i++) {
     EXPECT_LE(elapsed_times[i], kMaxAllowedWallTime)
@@ -107,11 +131,7 @@ TEST_F(O1SimpleTest, MultipleShortTasksCompleteWithoutPreemption) {
         << "ms — possible preemption detected";
   }
 
-  int num_tasks;
-  do {
-    num_tasks = uap_->Rpc(O1Scheduler::kCountAllTasks);
-    EXPECT_THAT(num_tasks, Ge(0));
-  } while (num_tasks > 0);
+  WaitForAllTasksDone(uap_);
 }
 
 }  // namespace
