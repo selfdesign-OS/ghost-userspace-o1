@@ -28,7 +28,7 @@ class O1Test : public testing::Test {
  protected:
   static void SetUpTestSuite() {
     Topology* t = MachineTopology();
-    AgentConfig cfg(t, t->all_cpus());
+    AgentConfig cfg(t, t->ToCpuList(std::vector<int>{4, 5}));
     uap_ = new AgentProcess<FullO1Agent<LocalEnclave>, AgentConfig>(cfg);
   }
 
