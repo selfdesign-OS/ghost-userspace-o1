@@ -529,6 +529,20 @@ cc_test(
 )
 
 cc_test(
+    name = "o1_simple_test",
+    size = "small",
+    srcs = [
+        "tests/o1_simple_test.cc",
+    ],
+    copts = compiler_flags,
+    deps = [
+        ":o1_scheduler",
+        "@com_google_googletest//:gtest",
+        "@com_google_absl//absl/flags:parse",
+    ],
+)
+
+cc_test(
     name = "biff_test",
     size = "small",
     srcs = [
