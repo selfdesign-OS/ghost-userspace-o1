@@ -261,12 +261,20 @@ void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
   const ghost_msg_payload_task_preempt* payload =
       static_cast<const ghost_msg_payload_task_preempt*>(msg.payload());
 
-  TaskOffCpu(task, /*blocked=*/false, payload->from_switchto);
+  // O1Schedule이 preempt_curr 처리 중에 이미 TaskOffCpu+Enqueue를 호출했을 수 있다.
+  // task가 이미 kQueued/kRunnable이면 TaskOffCpu를 건너뛴다.
+  if (task->oncpu() || (payload->from_switchto && task->blocked())) {
+    TaskOffCpu(task, /*blocked=*/false, payload->from_switchto);
+  }
 
   task->preempted = true;
   task->prio_boost = true;
   CpuState* cs = cpu_state_of(task);
-  cs->run_queue.Enqueue(task);
+
+  // O1Schedule에서 이미 Enqueue했을 수 있으므로 중복 삽입 방지
+  if (!task->queued()) {
+    cs->run_queue.Enqueue(task);
+  }
 
   if (payload->from_switchto) {
     Cpu cpu = topology()->cpu(payload->cpu);
@@ -321,9 +329,9 @@ void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
       absl::ToDoubleMilliseconds(task->remaining_time),
       blocked ? "kBlocked" : "kRunnable");
   CpuState* cs = cpu_state_of(task);
-  
-  //time slice update
-  if (cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/true)) {
+
+  // time slice update: task를 직접 사용 (cs->current는 null일 수 있음)
+  if (task->UpdateRemainingTime(/*isTaskOffCpu=*/true)) {
     cs->preempt_curr = true;
   }
 
