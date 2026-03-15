@@ -381,8 +381,12 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
   }
 
   if (!prio_boost) {
-    next = cs->current;
-    if (!next) next = cs->run_queue.Dequeue();
+    // cs->current가 있으면 해당 태스크는 이미 실행 중이므로 재커밋하지 않는다.
+    // 재커밋은 on_cpu() busy-wait과 seqnum 불일치 실패를 반복시킨다.
+    // cs->current가 없을 때만 큐에서 다음 태스크를 꺼내 커밋한다.
+    if (!cs->current) {
+      next = cs->run_queue.Dequeue();
+    }
   }
 
   RunRequest* req = enclave()->GetRunRequest(cpu);
