@@ -7,7 +7,6 @@
 #ifndef GHOST_SCHEDULERS_O1_O1_SCHEDULER_H
 #define GHOST_SCHEDULERS_O1_O1_SCHEDULER_H
 
-#include <atomic>
 #include <deque>
 #include <memory>
 
