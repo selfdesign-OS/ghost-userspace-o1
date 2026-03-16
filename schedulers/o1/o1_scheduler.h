@@ -7,6 +7,7 @@
 #ifndef GHOST_SCHEDULERS_O1_O1_SCHEDULER_H
 #define GHOST_SCHEDULERS_O1_O1_SCHEDULER_H
 
+#include <atomic>
 #include <deque>
 #include <memory>
 
@@ -124,6 +125,8 @@ class O1Scheduler : public BasicDispatchScheduler<O1Task> {
 
   void DumpState(const Cpu& cpu, int flags) final;
   std::atomic<bool> debug_runqueue_ = false;
+  // 선점 횟수 카운터 (최소 오버헤드를 위해 relaxed ordering 사용)
+  std::atomic<int64_t> preemption_count_{0};
 
   int CountAllTasks() {
     int num_tasks = 0;
@@ -136,6 +139,8 @@ class O1Scheduler : public BasicDispatchScheduler<O1Task> {
 
   static constexpr int kDebugRunqueue = 1;
   static constexpr int kCountAllTasks = 2;
+  static constexpr int kGetPreemptionCount = 3;
+  static constexpr int kResetPreemptionCount = 4;
 
  protected:
   void TaskNew(O1Task* task, const Message& msg) final;
@@ -221,6 +226,14 @@ class FullO1Agent : public FullAgent<EnclaveType> {
         return;
       case O1Scheduler::kCountAllTasks:
         response.response_code = scheduler_->CountAllTasks();
+        return;
+      case O1Scheduler::kGetPreemptionCount:
+        response.response_code =
+            scheduler_->preemption_count_.load(std::memory_order_relaxed);
+        return;
+      case O1Scheduler::kResetPreemptionCount:
+        scheduler_->preemption_count_.store(0, std::memory_order_relaxed);
+        response.response_code = 0;
         return;
       default:
         response.response_code = -1;

@@ -261,6 +261,7 @@ void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
   const ghost_msg_payload_task_preempt* payload =
       static_cast<const ghost_msg_payload_task_preempt*>(msg.payload());
 
+  preemption_count_.fetch_add(1, std::memory_order_relaxed);
   TaskOffCpu(task, /*blocked=*/false, payload->from_switchto);
 
   task->preempted = true;
@@ -366,6 +367,7 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
           "[O1Schedule] cpu=%-2d  PREEMPT tid=%-6d  remaining=%.2fms -> re-enqueue",
           cpu.id(), prev->gtid.tid(),
           absl::ToDoubleMilliseconds(prev->remaining_time));
+      preemption_count_.fetch_add(1, std::memory_order_relaxed);
       TaskOffCpu(cs->current, /*blocked=*/false, /*from_switchto=*/false);
       cs->run_queue.Enqueue(prev);
     }

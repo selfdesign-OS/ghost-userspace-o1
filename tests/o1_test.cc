@@ -48,6 +48,8 @@ AgentProcess<FullO1Agent<LocalEnclave>, AgentConfig>* O1Test::uap_;
 // 끝나야 한다. 선점이 발생하면 expired queue로 이동 후 재스케줄링되어
 // 경과 시간이 크게 늘어난다.
 TEST_F(O1Test, ShortTaskCompletesWithoutPreemption) {
+  uap_->Rpc(O1Scheduler::kResetPreemptionCount);
+
   // time slice(10ms)보다 충분히 여유 있는 완료 허용 시간
   constexpr absl::Duration kMaxAllowedWallTime = absl::Milliseconds(50);
 
@@ -70,10 +72,16 @@ TEST_F(O1Test, ShortTaskCompletesWithoutPreemption) {
     num_tasks = uap_->Rpc(O1Scheduler::kCountAllTasks);
     EXPECT_THAT(num_tasks, Ge(0));
   } while (num_tasks > 0);
+
+  int64_t preemptions = uap_->Rpc(O1Scheduler::kGetPreemptionCount);
+  printf("[PreemptionCount] ShortTaskCompletesWithoutPreemption: %ld\n",
+         preemptions);
 }
 
 // 여러 스레드가 각각 1ms 작업을 선점 없이 완료하는지 확인.
 TEST_F(O1Test, MultipleShortTasksCompleteWithoutPreemption) {
+  uap_->Rpc(O1Scheduler::kResetPreemptionCount);
+
   constexpr int kNumThreads = 10;
   constexpr absl::Duration kMaxAllowedWallTime = absl::Milliseconds(100);
 
@@ -107,6 +115,10 @@ TEST_F(O1Test, MultipleShortTasksCompleteWithoutPreemption) {
     num_tasks = uap_->Rpc(O1Scheduler::kCountAllTasks);
     EXPECT_THAT(num_tasks, Ge(0));
   } while (num_tasks > 0);
+
+  int64_t preemptions = uap_->Rpc(O1Scheduler::kGetPreemptionCount);
+  printf("[PreemptionCount] MultipleShortTasksCompleteWithoutPreemption: %ld\n",
+         preemptions);
 }
 
 }  // namespace
