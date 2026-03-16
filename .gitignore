@@ -3,3 +3,6 @@
 *bazel*
 *.json
 .vscode/*
+
+# 맥 Finder 숨김 파일
+.DS_Store
