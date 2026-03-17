@@ -91,7 +91,7 @@ class O1Rq {
 
   size_t Size() const {
     absl::MutexLock lock(&mu_);
-    return aq_.size();
+    return aq_.size() + eq_.size();
   }
 
   absl::Mutex& GetMu_() {

@@ -291,15 +291,18 @@ void O1Scheduler::TaskOffCpu(O1Task* task, bool blocked,
   GHOST_DPRINT(3, stderr, "Task %s offcpu %d", task->gtid.describe(),
                task->cpu);
   CpuState* cs = cpu_state_of(task);
-  
-  //time slice update
-  if (cs->current->UpdateRemainingTime(/*isTaskOffCpu=*/true)) {
-    cs->preempt_curr = true;
-  }
 
   if (task->oncpu()) {
-    CHECK_EQ(cs->current, task);
-    cs->current = nullptr;
+    // task가 실제로 CPU 위에 있을 때만 remaining_time을 업데이트한다.
+    // from_switchto 경로에서는 task가 kBlocked 상태이므로 업데이트 불필요.
+    if (task->UpdateRemainingTime(/*isTaskOffCpu=*/true)) {
+      cs->preempt_curr = true;
+    }
+    // preempt_curr 경로에서 cs->current를 먼저 클리어한 뒤 TaskPreempted가
+    // 도착할 수 있으므로, cs->current가 여전히 이 task를 가리킬 때만 클리어한다.
+    if (cs->current == task) {
+      cs->current = nullptr;
+    }
   } else {
     CHECK(from_switchto);
     CHECK_EQ(task->run_state, O1TaskState::kBlocked);
@@ -329,14 +332,23 @@ void O1Scheduler::O1Schedule(const Cpu& cpu, BarrierToken agent_barrier,
   CpuState* cs = cpu_state(cpu);
   O1Task* next = nullptr;
   if (cs->preempt_curr) {
-    GHOST_DPRINT(3, stderr, "Preempting current task %s on cpu %d", 
-                 cs->current ? cs->current->gtid.describe() : "none", cpu.id());
+    cs->preempt_curr = false;
     O1Task* prev = cs->current;
     if (prev) {
-     TaskOffCpu(cs->current, /*blocked=*/false, /*from_switchto=*/false);
-     cs->run_queue.Enqueue(prev);
+      if (!cs->run_queue.Empty()) {
+        // 큐에 다른 태스크가 있으면 현재 태스크를 선점한다.
+        // TaskOffCpu를 여기서 직접 호출하면 이후 커널이 보내는 TaskPreempted
+        // 메시지 핸들러에서도 TaskOffCpu가 한 번 더 호출되어 상태 불일치가 생긴다.
+        // cs->current만 클리어해서 아래 Dequeue()가 새 태스크를 고르도록 하고,
+        // 실제 TaskOffCpu와 재큐잉은 TaskPreempted 메시지에서 처리한다.
+        GHOST_DPRINT(3, stderr, "Preempting current task %s on cpu %d",
+                     prev->gtid.describe(), cpu.id());
+        cs->current = nullptr;
+      } else {
+        // 다른 실행 가능한 태스크가 없으면 타임슬라이스를 리셋하고 계속 실행한다.
+        prev->SetRemainingTime();
+      }
     }
-    cs->preempt_curr = false;
   }
 
   if (!prio_boost) {
@@ -413,8 +425,7 @@ void O1Scheduler::Schedule(const Cpu& cpu, const StatusWord& agent_sw) {
       Consume(cs->channel.get(), msg);
     }
 
-  // O1Schedule(cpu, agent_barrier, agent_sw.boosted_priority());
-  O1Schedule(cpu, agent_barrier, false);
+  O1Schedule(cpu, agent_barrier, agent_sw.boosted_priority());
 }
 
 void O1Rq::Enqueue(O1Task* task) {
