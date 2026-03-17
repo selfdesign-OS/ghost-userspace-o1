@@ -750,6 +750,22 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "o1_test",
+    size = "small",
+    srcs = [
+        "tests/o1_test.cc",
+    ],
+    copts = compiler_flags,
+    deps = [
+        ":ghost",
+        ":o1_scheduler",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/time",
+        "@com_google_googletest:gtest",
+    ],
+)
+
 cc_binary(
     name = "fifo_per_cpu_agent",
     srcs = [
