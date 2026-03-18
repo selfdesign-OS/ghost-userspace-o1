@@ -230,7 +230,7 @@ cc_test(
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
-        "@com_google_googletest:gtest",
+        "@com_google_googletest//:gtest",
     ],
 )
 
