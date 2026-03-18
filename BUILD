@@ -217,6 +217,23 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "o1_basic_test",
+    size = "large",
+    srcs = [
+        "tests/o1_basic_test.cc",
+    ],
+    copts = compiler_flags,
+    deps = [
+        ":ghost",
+        ":o1_scheduler",
+        "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+        "@com_google_googletest:gtest",
+    ],
+)
+
 cc_binary(
     name = "fifo_per_cpu_agent",
     srcs = [
