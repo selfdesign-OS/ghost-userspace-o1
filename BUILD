@@ -213,7 +213,7 @@ cc_test(
         ":o1_scheduler",
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/time",
-        "@com_google_googletest:gtest",
+        "@com_google_googletest//:gtest",
     ],
 )
 
