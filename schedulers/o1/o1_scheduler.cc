@@ -134,6 +134,8 @@ void O1Scheduler::TaskNew(O1Task* task, const Message& msg) {
   task->SetRemainingTime();
   task->seqnum = msg.seqnum();
   task->run_state = O1TaskState::kBlocked;
+  // nice [-20, +19] → static_priority [100, 139]
+  task->static_priority = 120 + payload->nice;
 
   if (payload->runnable) {
     task->run_state = O1TaskState::kRunnable;
@@ -242,6 +244,27 @@ void O1Scheduler::TaskPreempted(O1Task* task, const Message& msg) {
   if (payload->from_switchto) {
     Cpu cpu = topology()->cpu(payload->cpu);
     enclave()->GetAgent(cpu)->Ping();
+  }
+}
+
+void O1Scheduler::TaskPriorityChanged(O1Task* task, const Message& msg) {
+  const ghost_msg_payload_task_priority_changed* payload =
+      static_cast<const ghost_msg_payload_task_priority_changed*>(msg.payload());
+
+  GHOST_DPRINT(1, stderr, "[TaskPriorityChanged][%d][%s] nice=%d",
+               task->cpu, task->gtid.describe(), payload->nice);
+
+  int new_priority = 120 + payload->nice;
+
+  if (task->queued()) {
+    // 큐에 있는 상태면 기존 우선순위 버킷에서 빼고 새 우선순위로 재삽입
+    CpuState* cs = cpu_state_of(task);
+    cs->run_queue.Erase(task);      // kQueued -> kRunnable
+    task->static_priority = new_priority;
+    cs->run_queue.Enqueue(task);    // kRunnable -> kQueued
+  } else {
+    // blocked/oncpu 상태면 필드만 갱신, 다음 Enqueue 시 반영
+    task->static_priority = new_priority;
   }
 }
 
@@ -435,21 +458,16 @@ void O1Rq::Enqueue(O1Task* task) {
   task->run_state = O1TaskState::kQueued;
 
   absl::MutexLock lock(&mu_);
-
   if (task->remaining_time > absl::ZeroDuration()) {
-    GHOST_DPRINT(1, stderr, "[EnqueueActive][%d][%s] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
-	  if (task->prio_boost)
-	    aq_.push_front(task);
-	  else
-	    aq_.push_back(task);
-  }
-  else {
-    GHOST_DPRINT(1, stderr, "[EnqueueExpired][%d][%s] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
-	  task->SetRemainingTime();
-	  if (task->prio_boost)
-	    eq_.push_front(task);
-	  else
-	    eq_.push_back(task);
+    GHOST_DPRINT(1, stderr, "[EnqueueActive][%d][%s] prio=%d remaining=%lld",
+                 task->cpu, task->gtid.describe(), task->static_priority,
+                 absl::ToInt64Nanoseconds(task->remaining_time));
+    active_.push(task, task->prio_boost);
+  } else {
+    GHOST_DPRINT(1, stderr, "[EnqueueExpired][%d][%s] prio=%d",
+                 task->cpu, task->gtid.describe(), task->static_priority);
+    task->SetRemainingTime();
+    expired_.push(task, task->prio_boost);
   }
 }
 
@@ -460,10 +478,7 @@ void O1Rq::EnqueueActive(O1Task* task) {
   task->run_state = O1TaskState::kQueued;
 
   absl::MutexLock lock(&mu_);
-  if (task->prio_boost)
-    aq_.push_front(task);
-  else
-    aq_.push_back(task);
+  active_.push(task, task->prio_boost);
 }
 
 void O1Rq::EnqueueExpired(O1Task* task) {
@@ -474,79 +489,46 @@ void O1Rq::EnqueueExpired(O1Task* task) {
 
   absl::MutexLock lock(&mu_);
   task->SetRemainingTime();
-  if (task->prio_boost)
-    eq_.push_front(task);
-  else
-    eq_.push_back(task);
+  expired_.push(task, task->prio_boost);
 }
 
+// Dequeue() 내부에서 락을 보유한 채 호출되므로 락을 다시 잡지 않는다.
 void O1Rq::Swap() {
-  GHOST_DPRINT(1, stderr, "[Swap]");
-  std::swap(aq_, eq_);
+  GHOST_DPRINT(1, stderr, "[Swap] active→expired");
+  std::swap(active_, expired_);
 }
 
 O1Task* O1Rq::Dequeue() {
   GHOST_DPRINT(1, stderr, "[Dequeue]");
   absl::MutexLock lock(&mu_);
-  if (aq_.empty()) {
-    if (eq_.empty()) {
-      return nullptr;
-    } else {
-      Swap();
-    }
+  if (active_.empty()) {
+    if (expired_.empty()) return nullptr;
+    Swap();
   }
 
-  O1Task* task = aq_.front();
+  O1Task* task = active_.pop();
+  CHECK(task != nullptr);
   CHECK(task->queued());
   task->run_state = O1TaskState::kRunnable;
-  aq_.pop_front();
   return task;
 }
 
 void O1Rq::Erase(O1Task* task) {
-  GHOST_DPRINT(1, stderr, "[Erase][%d][%s] - remaining time: %lld", task->cpu, task->gtid.describe(), absl::ToInt64Nanoseconds(task->remaining_time));
+  GHOST_DPRINT(1, stderr, "[Erase][%d][%s] prio=%d", task->cpu,
+               task->gtid.describe(), task->static_priority);
   CHECK_EQ(task->run_state, O1TaskState::kQueued);
   absl::MutexLock lock(&mu_);
-  size_t size = aq_.size();
-  if (size > 0) {
-    // Check if 'task' is at the back of the runqueue (common case).
-    size_t pos = size - 1;
-    if (aq_[pos] == task) {
-      aq_.erase(aq_.cbegin() + pos);
-      task->run_state = O1TaskState::kRunnable;
-      return;
-    }
 
-    // Now search for 'task' from the beginning of the runqueue.
-    for (pos = 0; pos < size - 1; pos++) {
-      if (aq_[pos] == task) {
-        aq_.erase(aq_.cbegin() + pos);
-        task->run_state =  O1TaskState::kRunnable;
-        return;
-      }
-    }
+  // 우선순위 인덱스가 명확하므로 active, expired 버킷만 직접 탐색
+  if (active_.erase(task)) {
+    task->run_state = O1TaskState::kRunnable;
+    return;
   }
-  
-  size = eq_.size();
-  if (size > 0) {
-    // Check if 'task' is at the back of the runqueue (common case).
-    size_t pos = size - 1;
-    if (eq_[pos] == task) {
-      eq_.erase(eq_.cbegin() + pos);
-      task->run_state = O1TaskState::kRunnable;
-      return;
-    }
-
-    // Now search for 'task' from the beginning of the runqueue.
-    for (pos = 0; pos < size - 1; pos++) {
-      if (eq_[pos] == task) {
-        eq_.erase(eq_.cbegin() + pos);
-        task->run_state =  O1TaskState::kRunnable;
-        return;
-      }
-    }
+  if (expired_.erase(task)) {
+    task->run_state = O1TaskState::kRunnable;
+    return;
   }
-  CHECK(false);
+  CHECK(false);  // kQueued 상태인데 어느 배열에도 없으면 버그
 }
 
 std::unique_ptr<O1Scheduler> MultiThreadedO1Scheduler(Enclave* enclave,

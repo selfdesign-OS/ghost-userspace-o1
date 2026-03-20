@@ -7,6 +7,7 @@
 #ifndef GHOST_SCHEDULERS_O1_O1_SCHEDULER_H
 #define GHOST_SCHEDULERS_O1_O1_SCHEDULER_H
 
+#include <algorithm>
 #include <deque>
 #include <memory>
 
@@ -55,6 +56,10 @@ struct O1Task : public Task<> {
     runtime_at_last_pick = absl::Now();
   }
 
+  // nice [-20, +19] -> static_priority [100, 139]
+  // 숫자가 낮을수록 높은 우선순위 (nice -20 = priority 100 = 최고)
+  int static_priority = 120;  // 기본값: nice 0
+
   O1TaskState run_state = O1TaskState::kBlocked;
   int cpu = -1;
 
@@ -70,6 +75,61 @@ struct O1Task : public Task<> {
   absl::Time runtime_at_last_pick;
   // 남은 cpu 실행 시간
   absl::Duration remaining_time;
+};
+
+// 리눅스 O(1) 스케줄러의 prio_array에 해당하는 구조체.
+// 140개 일반 우선순위(100~139) 중 현재 사용하는 40개 수준을 비트맵으로 관리한다.
+// __builtin_ctzll(bitmap)으로 최고우선순위 버킷을 O(1)에 찾는다.
+struct PrioArray {
+  static constexpr int kNumPrio  = 40;   // nice -20 ~ +19
+  static constexpr int kBasePrio = 100;  // nice -20 -> index 0
+
+  uint64_t bitmap = 0;
+  std::deque<O1Task*> queues[kNumPrio];
+
+  bool empty() const { return bitmap == 0; }
+
+  size_t size() const {
+    size_t total = 0;
+    for (int i = 0; i < kNumPrio; i++) total += queues[i].size();
+    return total;
+  }
+
+  // front=true 이면 해당 우선순위 버킷 앞에, false 이면 뒤에 삽입한다.
+  void push(O1Task* task, bool front) {
+    int idx = task->static_priority - kBasePrio;
+    CHECK_GE(idx, 0);
+    CHECK_LT(idx, kNumPrio);
+    if (front)
+      queues[idx].push_front(task);
+    else
+      queues[idx].push_back(task);
+    bitmap |= (1ULL << idx);
+  }
+
+  // 가장 높은 우선순위(bitmap 최하위 세트 비트) 버킷의 맨 앞 태스크를 꺼낸다.
+  O1Task* pop() {
+    if (bitmap == 0) return nullptr;
+    int idx = __builtin_ctzll(bitmap);
+    auto& q = queues[idx];
+    O1Task* task = q.front();
+    q.pop_front();
+    if (q.empty()) bitmap &= ~(1ULL << idx);
+    return task;
+  }
+
+  // task를 해당 우선순위 버킷에서 찾아 제거한다. 성공 시 true 반환.
+  bool erase(O1Task* task) {
+    int idx = task->static_priority - kBasePrio;
+    CHECK_GE(idx, 0);
+    CHECK_LT(idx, kNumPrio);
+    auto& q = queues[idx];
+    auto it = std::find(q.begin(), q.end(), task);
+    if (it == q.end()) return false;
+    q.erase(it);
+    if (q.empty()) bitmap &= ~(1ULL << idx);
+    return true;
+  }
 };
 
 class O1Rq {
@@ -91,7 +151,7 @@ class O1Rq {
 
   size_t Size() const {
     absl::MutexLock lock(&mu_);
-    return aq_.size() + eq_.size();
+    return active_.size() + expired_.size();
   }
 
   absl::Mutex& GetMu_() {
@@ -102,8 +162,8 @@ class O1Rq {
 
  private:
   mutable absl::Mutex mu_;
-  std::deque<O1Task*> aq_ ABSL_GUARDED_BY(mu_);
-  std::deque<O1Task*> eq_ ABSL_GUARDED_BY(mu_);
+  PrioArray active_  ABSL_GUARDED_BY(mu_);   // 타임슬라이스 남은 태스크
+  PrioArray expired_ ABSL_GUARDED_BY(mu_);   // 타임슬라이스 소진 태스크
 };
 
 class O1Scheduler : public BasicDispatchScheduler<O1Task> {
@@ -146,6 +206,7 @@ class O1Scheduler : public BasicDispatchScheduler<O1Task> {
   void TaskBlocked(O1Task* task, const Message& msg) final;
   void TaskPreempted(O1Task* task, const Message& msg) final;
   void TaskSwitchto(O1Task* task, const Message& msg) final;
+  void TaskPriorityChanged(O1Task* task, const Message& msg) final;
   void CpuTick(const Message& msg) final;
 
  private:
